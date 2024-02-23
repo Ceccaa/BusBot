@@ -35,13 +35,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             rf"Da ora in poi riceverai un messaggio per le variazioni",
             reply_markup=ForceReply(selective=True),
         )
-
+        
         while True:
-            msg = getVariations()
+            
             time = datetime.now().time()
             right_time = str(time)[:-10]
-            print(right_time)
-            if( right_time == "6:30" or right_time == "21:23"):
+            
+            #fai una richiesta all'ora
+            if((int(right_time[3])*10 + int(right_time[4])) % 60 == 0):
+                 msg = getVariations()
+
+            if( right_time == "6:30" or right_time == "22:00"):
                 await update.message.reply_html(
                     rf"{msg}",
                     reply_markup=ForceReply(selective=True),
