@@ -1,67 +1,122 @@
-import time as balls
-from datetime import datetime, date
-import requests, bs4
-from telegram import ForceReply, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+"""Scraper per le corse non garantite di Start Romagna."""
+
+import logging
+from datetime import date
+
+import requests
+from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://servizi.startromagna.it/corsesoppresse/corsesopp"
+TIMEOUT = 20
 
 
-today = date.today()
-LINK = ("https://servizi.startromagna.it/corsesoppresse/corsesopp?param1=Forli-Cesena&param2=" + str(today))
-TOKEN = "7008079155:AAHAJAZN6jsAMOkw9vtDyOgKlBQeBynOAp0" 
+# ── Funzioni pubbliche ──────────────────────────────────────────────────────
 
 
-def getVariations():
-    response = requests.get(LINK)
-    response.raise_for_status()
+def get_cancelled_routes(bacino: str, linea: str | None = None) -> list[dict]:
+    """Scarica le corse soppresse dal sito Start Romagna.
 
-    soup = bs4.BeautifulSoup(response.text, 'html.parser')
-    tab = soup.find('table', class_='table table-bordered table-condensed table-responsive table-hover')
-    tab_busses = tab.find_all('td')
+    Args:
+        bacino: "Forli-Cesena", "Rimini" o "Ravenna".
+        linea:  Numero della linea (es. "3", "92"). None = tutte.
 
-    text = ""
-    for i in range(len(tab_busses)):
-        if(tab_busses[i].text == "3 Cesena"):
-            if(tab_busses[i+2].text == "07:00" or tab_busses[i+2].text == "07:15" or tab_busses[i+2].text == "07:30" or tab_busses[i+2].text == "07:45" or tab_busses[i+2].text == "08:00"):
-                text += "La corriera delle " + tab_busses[i+2].text + ", in partenza da" + tab_busses[i+1].text + " e diretta verso " + tab_busses[i+3].text + " è stata soppressa" + "\n \n"
-    
-    return text
+    Returns:
+        Lista di dict con: linea, inizio, dalle, fine, alle, data.
+    """
+    params = {"param1": bacino, "param2": date.today().isoformat()}
+
+    try:
+        response = requests.get(BASE_URL, params=params, timeout=TIMEOUT)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.error("Errore HTTP per %s: %s", bacino, exc)
+        return []
+
+    return parse_html(response.text, linea)
 
 
+def parse_html(html: str, linea: str | None = None) -> list[dict]:
+    """Parsa la tabella HTML delle corse soppresse.
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        user = update.effective_user
-        msg = getVariations()
-        await update.message.reply_html(
-            rf"Da ora in poi riceverai un messaggio per le variazioni",
-            reply_markup=ForceReply(selective=True),
+    La pagina ha due <table>:
+      - Filtri (contiene <input>)
+      - Dati  (colonne: LINEA · INIZIO · DALLE · FINE · ALLE · DATA)
+
+    Il campo LINEA ha formato "NUMERO CITTÀ" (es. "8 Forlì").
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    table = _find_data_table(soup)
+    if not table:
+        return []
+
+    results = []
+    for row in table.find_all("tr"):
+        cells = row.find_all("td")
+
+        if len(cells) < 5 or _is_filter_row(cells):
+            continue
+
+        row_linea = cells[0].get_text(strip=True)
+        if not row_linea:
+            continue
+
+        if linea and not linea_matches(row_linea, linea):
+            continue
+
+        results.append({
+            "linea":  row_linea,
+            "inizio": cells[1].get_text(strip=True),
+            "dalle":  cells[2].get_text(strip=True),
+            "fine":   cells[3].get_text(strip=True),
+            "alle":   cells[4].get_text(strip=True),
+            "data":   cells[5].get_text(strip=True) if len(cells) > 5 else "",
+        })
+
+    logger.info("Trovate %d corse soppresse (linea=%s)", len(results), linea)
+    return results
+
+
+def linea_matches(row_linea: str, target: str) -> bool:
+    """Verifica se il primo token di row_linea corrisponde a target.
+
+    "8 Forlì" → target "8"  → True
+    "S1 Forlì" → target "s1" → True
+    "80 Forlì" → target "8"  → False
+    """
+    parts = row_linea.strip().split()
+    return bool(parts) and parts[0].upper() == target.strip().upper()
+
+
+def format_routes(routes: list[dict]) -> str:
+    """Formatta le corse soppresse in un messaggio HTML per Telegram."""
+    if not routes:
+        return "✅ Nessuna corsa soppressa trovata per la tua linea oggi."
+
+    lines = ["🚍 <b>Corse non garantite oggi:</b>\n"]
+    for r in routes:
+        lines.append(
+            f"❌ <b>Linea {r['linea']}</b>\n"
+            f"   Da: {r['inizio']} → {r['fine']}\n"
+            f"   Orario: {r['dalle']} — {r['alle']}\n"
         )
-        
-        while True:
-            
-            time = datetime.now().time()
-            right_time = str(time)[:-10]
-            
-            #fai una richiesta all'ora
-            if((int(right_time[3])*10 + int(right_time[4])) % 60 == 0):
-                 msg = getVariations()
-
-            if( right_time == "6:30" or right_time == "22:00"):
-                await update.message.reply_html(
-                    rf"{msg}",
-                    reply_markup=ForceReply(selective=True),
-                )
-             
-            balls.sleep(60)
+    return "\n".join(lines)
 
 
-
-#sis
-
-application = Application.builder().token(TOKEN).build()
-application.add_handler(CommandHandler("start", start))
-application.run_polling(allowed_updates=Update.ALL_TYPES)
+# ── Funzioni interne ────────────────────────────────────────────────────────
 
 
+def _find_data_table(soup: BeautifulSoup):
+    """Trova la tabella dati ignorando quella dei filtri."""
+    for table in soup.find_all("table"):
+        for row in table.find_all("tr"):
+            cells = row.find_all("td")
+            if len(cells) >= 5 and not _is_filter_row(cells):
+                return table
+    return None
 
 
-
+def _is_filter_row(cells) -> bool:
+    """True se la riga contiene campi <input> (riga dei filtri)."""
+    return any(cell.find("input") for cell in cells)

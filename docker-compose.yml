@@ -1,0 +1,11 @@
+services:
+  busbot:
+    build: .
+    container_name: busbot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - busbot-data:/app/data
+
+volumes:
+  busbot-data:
