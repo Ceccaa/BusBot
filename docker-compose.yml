@@ -6,6 +6,7 @@ services:
     env_file: .env
     volumes:
       - busbot-data:/app/data
-
+      - ./:/app/data
+      - ./user_config.json:/app/data/user_config.json
 volumes:
   busbot-data:
