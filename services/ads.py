@@ -62,8 +62,10 @@ async def handle_ad_view(request: web.Request) -> web.Response:
     <title>Sblocca Orari - Adsgram</title>
     <!-- 1. Importa SDK Ufficiale di Telegram -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- 2. Importa SDK Ufficiale di Adsgram -->
-    <script src="https://sdk.adsgram.ai/js/adsgram.js"></script>
+
+    <!-- 2. Importa SDK Ufficiale di Adsgram (Url aggiornato) -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
     <style>
         body { background-color: #121212; color: #ffffff; text-align: center; font-family: sans-serif; padding-top: 50px; }
     </style>
