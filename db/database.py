@@ -8,6 +8,7 @@ import logging
 import os
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,8 @@ def init_db() -> None:
                 bacino             TEXT    NOT NULL,
                 notifiche_realtime BOOLEAN DEFAULT 0,
                 is_active          BOOLEAN DEFAULT 1,
-                ad_impressions     INTEGER DEFAULT 0
+                ad_impressions     INTEGER DEFAULT 0,
+                last_ad_date       TEXT    DEFAULT NULL
             );
 
             CREATE TABLE IF NOT EXISTS user_lines (
@@ -69,6 +71,14 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_user_alarms_user ON user_alarms(user_id);
             CREATE INDEX IF NOT EXISTS idx_user_alarms_time ON user_alarms(orario);
         """)
+        
+        # Retrocompatibilità: aggiungo la colonna se non esiste nei db vecchi
+        try:
+            con.execute("ALTER TABLE users ADD COLUMN last_ad_date TEXT DEFAULT NULL")
+            logger.info("Migrazione schema DB: colonna last_ad_date aggiunta.")
+        except sqlite3.OperationalError:
+            pass  # Colonna già esistente
+            
     logger.info("DB initialized at %s", DB_PATH)
 
 
@@ -186,12 +196,28 @@ def set_realtime(chat_id: int, enabled: bool) -> bool:
 
 
 def increment_ad_impression(user_id: int) -> None:
-    """Increment ad_impressions counter for a user."""
+    """Increment ad_impressions counter for a user and record today's date."""
+    today_iso = datetime.now().date().isoformat()
     with _conn() as con:
         con.execute(
-            "UPDATE users SET ad_impressions = ad_impressions + 1 WHERE user_id = ?",
-            (user_id,),
+            """UPDATE users 
+               SET ad_impressions = ad_impressions + 1,
+                   last_ad_date = ?
+               WHERE user_id = ?""",
+            (today_iso, user_id),
         )
+
+
+def is_unlocked(chat_id: int) -> bool:
+    """Return True if the user has watched an ad today."""
+    today_iso = datetime.now().date().isoformat()
+    with _conn() as con:
+        row = con.execute(
+            "SELECT last_ad_date FROM users WHERE user_id = ?", (chat_id,)
+        ).fetchone()
+        if not row or not row["last_ad_date"]:
+            return False
+        return row["last_ad_date"] == today_iso
 
 
 # ── Internal helpers ─────────────────────────────────────────────────────────

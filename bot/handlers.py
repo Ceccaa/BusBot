@@ -28,9 +28,10 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         for linea in cfg["linee"]
     }
     
+    is_unlocked = db.is_unlocked(chat_id)
     reply_markup = get_adsgram_markup(chat_id)
     await update.message.reply_html(
-        format_multiline_bulletin(linee_status),
+        format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),
         reply_markup=reply_markup
     )
 

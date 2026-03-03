@@ -107,9 +107,10 @@ async def scegli_linee(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         linea: scraper.get_cancelled_routes(bacino, linea) for linea in linee
     }
     
+    is_unlocked = db.is_unlocked(chat_id)
     reply_markup = get_adsgram_markup(chat_id)
     await update.message.reply_html(
-        format_multiline_bulletin(linee_status),
+        format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),
         reply_markup=reply_markup
     )
 

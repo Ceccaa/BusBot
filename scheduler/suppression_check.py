@@ -73,10 +73,11 @@ async def suppression_check_job(context) -> None:
 async def _send_bulletin(bot, chat_id: int, linee_status: dict, linee: list[str]) -> None:
     """Invia il bollettino soppressioni, gestendo Forbidden (bot bloccato)."""
     try:
+        is_unlocked = db.is_unlocked(chat_id)
         reply_markup = get_adsgram_markup(chat_id)
         await bot.send_message(
             chat_id=chat_id,
-            text=format_multiline_bulletin(linee_status),
+            text=format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),
             parse_mode="HTML",
             reply_markup=reply_markup,
         )

@@ -134,6 +134,13 @@ class TestDatabase(unittest.TestCase):
         db.increment_ad_impression(111)
         user = db.get_user(111)
         self.assertEqual(user["ad_impressions"], 2)
+        self.assertIsNotNone(user.get("last_ad_date"))
+
+    def test_is_unlocked(self):
+        db.save_user(111, "Rimini", ["92"])
+        self.assertFalse(db.is_unlocked(111))  # Inizialmente False
+        db.increment_ad_impression(111)
+        self.assertTrue(db.is_unlocked(111))  # Dopo impression è True
 
 
 # ════════════════════════════════════════════════════════════════════════════
