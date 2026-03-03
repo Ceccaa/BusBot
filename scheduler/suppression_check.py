@@ -6,22 +6,18 @@
 """
 
 import logging
-import os
 from datetime import datetime, time as dt_time
 
 import telegram
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from db import database as db
 from services import scraper
-from services.notifications import format_multiline_bulletin
+from services.notifications import format_multiline_bulletin, get_adsgram_markup
 
 logger = logging.getLogger(__name__)
 
 ACTIVE_START = dt_time(5, 30)
 ACTIVE_END = dt_time(22, 0)
-ADSGRAM_BLOCK_ID = os.getenv("ADSGRAM_BLOCK_ID", "")
-ADSGRAM_BOT_URL = os.getenv("ADSGRAM_BOT_URL", "")
 
 
 async def suppression_check_job(context) -> None:
@@ -77,7 +73,7 @@ async def suppression_check_job(context) -> None:
 async def _send_bulletin(bot, chat_id: int, linee_status: dict, linee: list[str]) -> None:
     """Invia il bollettino soppressioni, gestendo Forbidden (bot bloccato)."""
     try:
-        reply_markup = _build_adsgram_markup(chat_id)
+        reply_markup = get_adsgram_markup(chat_id)
         await bot.send_message(
             chat_id=chat_id,
             text=format_multiline_bulletin(linee_status),
@@ -91,16 +87,6 @@ async def _send_bulletin(bot, chat_id: int, linee_status: dict, linee: list[str]
     except Exception as exc:
         logger.error("Errore notifica → chat_id=%s: %s", chat_id, exc)
 
-
-def _build_adsgram_markup(chat_id: int) -> InlineKeyboardMarkup | None:
-    """Crea inline keyboard con banner Adsgram se configurato properly."""
-    if not ADSGRAM_BLOCK_ID or not ADSGRAM_BOT_URL:
-        return None
-
-    # Esempio URL: https://t.me/CesenaBusBot/ads?startapp=bot-24237_123456
-    url = f"{ADSGRAM_BOT_URL}?startapp={ADSGRAM_BLOCK_ID}_{chat_id}"
-    button = InlineKeyboardButton("📢 Supporta BusBot (Ads)", url=url)
-    return InlineKeyboardMarkup([[button]])
 
 
 def _hash(routes: list[dict]) -> str:

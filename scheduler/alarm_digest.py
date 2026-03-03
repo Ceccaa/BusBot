@@ -6,20 +6,15 @@ Gestisce Telegram Forbidden: deattiva utenti che hanno bloccato il bot.
 """
 
 import logging
-import os
 from datetime import datetime
 
 import telegram
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from db import database as db
 from services import scraper
-from services.notifications import format_alarm_bulletin
+from services.notifications import format_alarm_bulletin, get_adsgram_markup
 
 logger = logging.getLogger(__name__)
-
-ADSGRAM_BLOCK_ID = os.getenv("ADSGRAM_BLOCK_ID", "")
-ADSGRAM_BOT_URL = os.getenv("ADSGRAM_BOT_URL", "")
 
 
 async def alarm_digest_job(context) -> None:
@@ -46,7 +41,7 @@ async def alarm_digest_job(context) -> None:
         }
 
         text = format_alarm_bulletin(now, linee_status)
-        reply_markup = _build_adsgram_markup(chat_id)
+        reply_markup = get_adsgram_markup(chat_id)
 
         try:
             await context.bot.send_message(
@@ -62,13 +57,3 @@ async def alarm_digest_job(context) -> None:
         except Exception as exc:
             logger.error("Errore alarm digest → chat_id=%s: %s", chat_id, exc)
 
-
-def _build_adsgram_markup(chat_id: int) -> InlineKeyboardMarkup | None:
-    """Crea inline keyboard con banner Adsgram se configurato properly."""
-    if not ADSGRAM_BLOCK_ID or not ADSGRAM_BOT_URL:
-        return None
-
-    # Esempio URL: https://t.me/CesenaBusBot/ads?startapp=bot-24237_123456
-    url = f"{ADSGRAM_BOT_URL}?startapp={ADSGRAM_BLOCK_ID}_{chat_id}"
-    button = InlineKeyboardButton("📢 Supporta BusBot (Ads)", url=url)
-    return InlineKeyboardMarkup([[button]])

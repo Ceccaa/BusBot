@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from db import database as db
 from services import scraper
-from services.notifications import format_multiline_bulletin
+from services.notifications import format_multiline_bulletin, get_adsgram_markup
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,12 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         linea: scraper.get_cancelled_routes(cfg["bacino"], linea)
         for linea in cfg["linee"]
     }
-    await update.message.reply_html(format_multiline_bulletin(linee_status))
+    
+    reply_markup = get_adsgram_markup(chat_id)
+    await update.message.reply_html(
+        format_multiline_bulletin(linee_status),
+        reply_markup=reply_markup
+    )
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -44,6 +49,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     linee_str = " · ".join(cfg.get("linee", [])) or "—"
     alarms_str = " · ".join(cfg.get("alarms", [])) or "nessuno"
 
+    reply_markup = get_adsgram_markup(chat_id)
     await update.message.reply_html(
         f"📋 <b>Configurazione:</b>\n\n"
         f"📍 Bacino: <b>{cfg['bacino']}</b>\n"
@@ -51,7 +57,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"⏰ Sveglie: <b>{alarms_str}</b>\n"
         f"🔔 Notifiche realtime: {realtime}\n"
         f"📡 Stato: {stato}\n"
-        f"📊 Impressioni ads: {cfg.get('ad_impressions', 0)}"
+        f"📊 Impressioni ads: {cfg.get('ad_impressions', 0)}",
+        reply_markup=reply_markup
     )
 
 

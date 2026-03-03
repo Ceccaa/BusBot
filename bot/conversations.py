@@ -106,7 +106,12 @@ async def scegli_linee(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     linee_status = {
         linea: scraper.get_cancelled_routes(bacino, linea) for linea in linee
     }
-    await update.message.reply_html(format_multiline_bulletin(linee_status))
+    
+    reply_markup = get_adsgram_markup(chat_id)
+    await update.message.reply_html(
+        format_multiline_bulletin(linee_status),
+        reply_markup=reply_markup
+    )
 
     return ConversationHandler.END
 
@@ -161,9 +166,12 @@ async def salva_alarms(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     db.save_alarms(chat_id, valid)
     orari_str = " · ".join(valid)
+    
+    reply_markup = get_adsgram_markup(chat_id)
     await update.message.reply_html(
         f"✅ Allarmi impostati: <b>{orari_str}</b>\n\n"
-        "Riceverai un bollettino automatico ad ogni orario impostato."
+        "Riceverai un bollettino automatico ad ogni orario impostato.",
+        reply_markup=reply_markup
     )
     return ConversationHandler.END
 

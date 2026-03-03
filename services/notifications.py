@@ -1,8 +1,25 @@
 """Formattazione dei messaggi Telegram per BusBot v2.0."""
 
 import logging
+import os
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 logger = logging.getLogger(__name__)
+
+ADSGRAM_BLOCK_ID = os.getenv("ADSGRAM_BLOCK_ID", "")
+ADSGRAM_BOT_URL = os.getenv("ADSGRAM_BOT_URL", "")
+
+
+def get_adsgram_markup(chat_id: int) -> InlineKeyboardMarkup | None:
+    """Crea inline keyboard con banner Adsgram se configurato properly."""
+    if not ADSGRAM_BLOCK_ID or not ADSGRAM_BOT_URL:
+        return None
+
+    # Esempio URL: https://t.me/CesenaBusBot/ads?startapp=bot-24237_123456
+    url = f"{ADSGRAM_BOT_URL}?startapp={ADSGRAM_BLOCK_ID}_{chat_id}"
+    button = InlineKeyboardButton("📢 Supporta BusBot (Ads)", url=url)
+    return InlineKeyboardMarkup([[button]])
 
 
 # ── Bollettino multi-linea (soppressioni periodiche) ─────────────────────────
