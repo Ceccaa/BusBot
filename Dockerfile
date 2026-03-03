@@ -11,11 +11,17 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia il codice sorgente
-COPY main.py bot.py scraper.py config.py ./
+# Copia il codice sorgente (nuova struttura v2)
+COPY main.py .
+COPY bot/ ./bot/
+COPY db/ ./db/
+COPY services/ ./services/
+COPY scheduler/ ./scheduler/
 
-# Volume per persistere la configurazione utenti
+# Volume per persistere il database SQLite
 VOLUME ["/app/data"]
-ENV CONFIG_PATH=/app/data/user_config.json
+ENV DB_PATH=/app/data/busbot.db
+
+EXPOSE 8080
 
 CMD ["python", "main.py"]

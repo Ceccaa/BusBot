@@ -1,13 +1,16 @@
-"""Test suite per BusBot — scraper, matching linee e configurazione utenti."""
+"""Test suite BusBot v2.0 — scraper, matching linee e formattazione.
 
-import json
-import tempfile
+Test esistenti adattati ai nuovi path di import (services.scraper).
+"""
+
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
-import config
-from scraper import parse_html, linea_matches, format_routes
+from services.scraper import parse_html, linea_matches
+from services.notifications import (
+    format_multiline_bulletin,
+    format_alarm_bulletin,
+    format_realtime_alert,
+)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -78,7 +81,6 @@ class TestParseHtml(unittest.TestCase):
         self.assertEqual(primo["data"],   "23-02-2026")
 
     def test_ignora_riga_filtri(self):
-        """La riga con <input> non deve apparire nei risultati."""
         result = parse_html(PAGE_WITH_DATA)
         for r in result:
             self.assertNotIn("Filtra", r["linea"])
@@ -123,7 +125,6 @@ class TestFiltroLinea(unittest.TestCase):
         self.assertEqual(result[0]["linea"], "1A Ravenna")
 
     def test_filtra_case_insensitive(self):
-        """'s1' deve funzionare come 'S1'."""
         self.assertEqual(
             parse_html(PAGE_WITH_DATA, linea="s1"),
             parse_html(PAGE_WITH_DATA, linea="S1"),
@@ -137,7 +138,7 @@ class TestFiltroLinea(unittest.TestCase):
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  Test linea_matches — matching "NUMERO CITTÀ" → "NUMERO"
+#  Test linea_matches
 # ════════════════════════════════════════════════════════════════════════════
 
 
@@ -162,11 +163,9 @@ class TestLineaMatches(unittest.TestCase):
         self.assertFalse(linea_matches("8 Forlì", "3"))
 
     def test_non_matcha_prefisso_parziale(self):
-        """'8' non deve matchare '80', solo match esatto sul primo token."""
         self.assertFalse(linea_matches("80 Forlì", "8"))
 
     def test_non_matcha_suffisso(self):
-        """'1' non deve matchare '1A'."""
         self.assertFalse(linea_matches("1A Ravenna", "1"))
 
     def test_stringa_vuota(self):
@@ -176,11 +175,9 @@ class TestLineaMatches(unittest.TestCase):
         self.assertFalse(linea_matches("   ", "8"))
 
     def test_target_con_spazi(self):
-        """Spazi nel target devono essere ignorati."""
         self.assertTrue(linea_matches("8 Forlì", " 8 "))
 
     def test_linea_senza_citta(self):
-        """Caso ipotetico: solo il numero senza città."""
         self.assertTrue(linea_matches("92", "92"))
 
 
@@ -189,30 +186,63 @@ class TestLineaMatches(unittest.TestCase):
 # ════════════════════════════════════════════════════════════════════════════
 
 
-class TestFormatRoutes(unittest.TestCase):
+class TestFormatMultilineBulletin(unittest.TestCase):
 
     def test_nessuna_corsa(self):
-        msg = format_routes([])
+        msg = format_multiline_bulletin({"8": [], "92": []})
         self.assertIn("✅", msg)
-        self.assertIn("Nessuna", msg)
+        self.assertIn("Nessuna corsa soppressa", msg)
 
-    def test_formattazione_con_dati(self):
-        routes = [{
-            "linea": "8 Forlì", "inizio": "Schio (Lunga)",
-            "dalle": "15:57", "fine": "V.Federico Ii",
-            "alle": "16:24", "data": "23-02-2026",
-        }]
-        msg = format_routes(routes)
-        self.assertIn("❌", msg)
-        self.assertIn("Linea 8 Forlì", msg)
-        self.assertIn("Schio (Lunga)", msg)
-        self.assertIn("15:57", msg)
-        self.assertIn("V.Federico Ii", msg)
-
-    def test_piu_corse(self):
+    def test_linea_con_soppressione(self):
         routes = parse_html(PAGE_WITH_DATA, linea="8")
-        msg = format_routes(routes)
+        msg = format_multiline_bulletin({"8": routes, "92": []})
+        self.assertIn("❌", msg)
+        self.assertIn("Linea <b>8</b>", msg)
+        self.assertIn("✅", msg)
+        self.assertIn("Linea <b>92</b>", msg)
+
+    def test_dizionario_vuoto(self):
+        msg = format_multiline_bulletin({})
+        self.assertIn("⚠️", msg)
+
+    def test_piu_linee_con_soppressioni(self):
+        routes_8 = parse_html(PAGE_WITH_DATA, linea="8")
+        routes_s1 = parse_html(PAGE_WITH_DATA, linea="S1")
+        msg = format_multiline_bulletin({"8": routes_8, "S1": routes_s1})
         self.assertEqual(msg.count("❌"), 2)
+
+
+class TestFormatAlarmBulletin(unittest.TestCase):
+
+    def test_include_orario(self):
+        msg = format_alarm_bulletin("07:10", {"8": []})
+        self.assertIn("07:10", msg)
+
+    def test_include_buona_fortuna(self):
+        msg = format_alarm_bulletin("07:10", {"8": []})
+        self.assertIn("Buona fortuna", msg)
+
+    def test_linea_soppressa(self):
+        routes = parse_html(PAGE_WITH_DATA, linea="8")
+        msg = format_alarm_bulletin("15:57", {"8": routes})
+        self.assertIn("❌", msg)
+
+
+class TestFormatRealtimeAlert(unittest.TestCase):
+
+    SAMPLE_ROUTE = {
+        "linea": "8 Forlì", "inizio": "Schio",
+        "dalle": "07:10", "fine": "Centro",
+        "alle": "07:40", "data": "03-03-2026",
+    }
+
+    def test_include_linea(self):
+        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE])
+        self.assertIn("Linea <b>8</b>", msg)
+
+    def test_include_orario(self):
+        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE])
+        self.assertIn("07:10", msg)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -224,77 +254,19 @@ class TestFetchReale(unittest.TestCase):
     """Verifica che il sito sia raggiungibile e il parsing funzioni."""
 
     def test_fetch_forli_cesena(self):
-        from scraper import get_cancelled_routes
+        from services.scraper import get_cancelled_routes
         result = get_cancelled_routes("Forli-Cesena")
         self.assertIsInstance(result, list)
 
     def test_fetch_rimini(self):
-        from scraper import get_cancelled_routes
+        from services.scraper import get_cancelled_routes
         result = get_cancelled_routes("Rimini")
         self.assertIsInstance(result, list)
 
     def test_fetch_ravenna(self):
-        from scraper import get_cancelled_routes
+        from services.scraper import get_cancelled_routes
         result = get_cancelled_routes("Ravenna")
         self.assertIsInstance(result, list)
-
-
-# ════════════════════════════════════════════════════════════════════════════
-#  Test configurazione utenti
-# ════════════════════════════════════════════════════════════════════════════
-
-
-class TestConfig(unittest.TestCase):
-
-    def setUp(self):
-        self.tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w", encoding="utf-8")
-        self.tmp.write("{}")
-        self.tmp.close()
-        self.patcher = patch.object(config, "CONFIG_FILE", Path(self.tmp.name))
-        self.patcher.start()
-
-    def tearDown(self):
-        self.patcher.stop()
-        Path(self.tmp.name).unlink(missing_ok=True)
-
-    def test_salva_e_leggi(self):
-        config.save_user(111, "Forli-Cesena", "8")
-        user = config.get_user(111)
-        self.assertEqual(user["bacino"], "Forli-Cesena")
-        self.assertEqual(user["linea"], "8")
-        self.assertTrue(user["active"])
-
-    def test_linea_maiuscola(self):
-        config.save_user(111, "Rimini", "1a")
-        self.assertEqual(config.get_user(111)["linea"], "1A")
-
-    def test_aggiorna_utente(self):
-        config.save_user(111, "Rimini", "92")
-        config.save_user(111, "Ravenna", "5")
-        self.assertEqual(config.get_user(111)["bacino"], "Ravenna")
-
-    def test_disattiva(self):
-        config.save_user(111, "Rimini", "92")
-        self.assertTrue(config.remove_user(111))
-        self.assertFalse(config.get_user(111)["active"])
-
-    def test_disattiva_inesistente(self):
-        self.assertFalse(config.remove_user(999))
-
-    def test_utente_inesistente(self):
-        self.assertIsNone(config.get_user(999))
-
-    def test_utenti_attivi(self):
-        config.save_user(111, "Rimini", "92")
-        config.save_user(222, "Ravenna", "1A")
-        config.remove_user(222)
-        active = config.get_all_active_users()
-        self.assertIn("111", active)
-        self.assertNotIn("222", active)
-
-    def test_file_corrotto(self):
-        Path(self.tmp.name).write_text("{{broken", encoding="utf-8")
-        self.assertIsNone(config.get_user(111))
 
 
 if __name__ == "__main__":

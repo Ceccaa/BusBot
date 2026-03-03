@@ -4,9 +4,10 @@ services:
     container_name: busbot
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "5000:5000"
     volumes:
       - busbot-data:/app/data
-      - ./:/app/data
-      - ./user_config.json:/app/data/user_config.json
+
 volumes:
   busbot-data:
