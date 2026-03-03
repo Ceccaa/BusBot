@@ -3,23 +3,37 @@
 import logging
 import os
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
+
+from db import database as db
 
 logger = logging.getLogger(__name__)
 
-ADSGRAM_BLOCK_ID = os.getenv("ADSGRAM_BLOCK_ID", "")
-ADSGRAM_BOT_URL = os.getenv("ADSGRAM_BOT_URL", "")
+MONETAG_WEBAPP_URL = os.getenv("MONETAG_WEBAPP_URL", "")
 
 
-def get_adsgram_markup(chat_id: int) -> InlineKeyboardMarkup | None:
-    """Crea inline keyboard con banner Adsgram se configurato properly."""
-    if not ADSGRAM_BLOCK_ID or not ADSGRAM_BOT_URL:
+def get_ad_markup(chat_id: int) -> ReplyKeyboardMarkup | None:
+    """Crea il bottone KeyboardButton web_app per Monetag Rewarded Interstitial.
+
+    Apre la pagina GitHub Pages con il Monetag SDK come Telegram Mini App,
+    che al completamento invia sendData('ad_reward') per sbloccare gli orari.
+    Non mostrato ai supporter permanenti (Stars ≥ 150).
+    """
+    if not MONETAG_WEBAPP_URL:
         return None
 
-    # Esempio URL: https://t.me/CesenaBusBot/ads?startapp=bot-24237_123456
-    url = f"{ADSGRAM_BOT_URL}?startapp={ADSGRAM_BLOCK_ID}_{chat_id}"
-    button = InlineKeyboardButton("📢 Supporta BusBot (Ads)", url=url)
-    return InlineKeyboardMarkup([[button]])
+    if db.is_permanent_supporter(chat_id):
+        return None
+
+    button = KeyboardButton(
+        "📢 Sblocca orari (guarda uno spot)",
+        web_app=WebAppInfo(url=MONETAG_WEBAPP_URL),
+    )
+    return ReplyKeyboardMarkup(
+        [[button]],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
 
 
 # ── Metodi di utilità ────────────────────────────────────────────────────────

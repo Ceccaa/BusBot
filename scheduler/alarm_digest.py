@@ -12,7 +12,7 @@ import telegram
 
 from db import database as db
 from services import scraper
-from services.notifications import format_alarm_bulletin, get_adsgram_markup
+from services.notifications import format_alarm_bulletin, get_ad_markup
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ async def alarm_digest_job(context) -> None:
         }
 
         text = format_alarm_bulletin(now, linee_status)
-        reply_markup = get_adsgram_markup(chat_id)
+        reply_markup = get_ad_markup(chat_id)
 
         try:
             msg = await context.bot.send_message(

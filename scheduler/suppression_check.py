@@ -12,7 +12,7 @@ import telegram
 
 from db import database as db
 from services import scraper
-from services.notifications import format_multiline_bulletin, get_adsgram_markup
+from services.notifications import format_multiline_bulletin, get_ad_markup
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ async def _send_bulletin(bot, chat_id: int, linee_status: dict, linee: list[str]
     """Invia il bollettino soppressioni, gestendo Forbidden (bot bloccato)."""
     try:
         is_unlocked = db.is_unlocked(chat_id)
-        reply_markup = get_adsgram_markup(chat_id)
+        reply_markup = get_ad_markup(chat_id)
         msg = await bot.send_message(
             chat_id=chat_id,
             text=format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),

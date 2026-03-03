@@ -4,7 +4,6 @@ Avvia in parallelo:
   1. Bot Telegram (polling)
   2. Job queue: suppression_check ogni 30 minuti
   3. Job queue: alarm_digest ogni 60 secondi
-  4. Server aiohttp per /ads/reward (come post_init hook)
 """
 
 import logging
@@ -19,7 +18,6 @@ from bot.stars import register_stars_handlers
 from db import database as db
 from scheduler.alarm_digest import alarm_digest_job
 from scheduler.suppression_check import suppression_check_job
-from services.ads import run_ads_server
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -41,13 +39,6 @@ CHECK_INTERVAL = 30 * 60   # 30 minuti
 ALARM_INTERVAL = 60        # 1 minuto
 
 
-# ── Post-init hook (avvia aiohttp server nello stesso event loop di PTB) ─────
-
-
-async def post_init(_application: Application) -> None:
-    """Avviato da PTB dopo che l'event loop è attivo."""
-    await run_ads_server(bot=_application.bot)
-
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
@@ -61,7 +52,6 @@ def main() -> None:
     app = (
         Application.builder()
         .token(TOKEN)
-        .post_init(post_init)
         .build()
     )
 

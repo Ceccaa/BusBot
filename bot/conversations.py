@@ -16,7 +16,7 @@ from telegram.ext import (
 
 from db import database as db
 from services import scraper
-from services.notifications import format_multiline_bulletin, get_adsgram_markup
+from services.notifications import format_multiline_bulletin, get_ad_markup
 
 logger = logging.getLogger(__name__)
 
@@ -108,11 +108,12 @@ async def scegli_linee(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     }
     
     is_unlocked = db.is_unlocked(chat_id)
-    reply_markup = get_adsgram_markup(chat_id)
-    await update.message.reply_html(
+    reply_markup = get_ad_markup(chat_id)
+    msg = await update.message.reply_html(
         format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
+    db.update_last_message_id(chat_id, msg.message_id)
 
     return ConversationHandler.END
 
@@ -168,7 +169,7 @@ async def salva_alarms(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     db.save_alarms(chat_id, valid)
     orari_str = " · ".join(valid)
     
-    reply_markup = get_adsgram_markup(chat_id)
+    reply_markup = get_ad_markup(chat_id)
     await update.message.reply_html(
         f"✅ Allarmi impostati: <b>{orari_str}</b>\n\n"
         "Riceverai un bollettino automatico ad ogni orario impostato.",

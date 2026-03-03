@@ -8,9 +8,9 @@ import logging
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import date, datetime
-from typing import Any
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +45,15 @@ def init_db() -> None:
     with _conn() as con:
         con.executescript("""
             CREATE TABLE IF NOT EXISTS users (
-                user_id            INTEGER PRIMARY KEY,
-                chat_id            INTEGER NOT NULL,
-                bacino             TEXT    NOT NULL,
-                notifiche_realtime BOOLEAN DEFAULT 0,
-                is_active          BOOLEAN DEFAULT 1,
-                ad_impressions     INTEGER DEFAULT 0,
-                last_ad_date       TEXT    DEFAULT NULL,
-                last_message_id    INTEGER DEFAULT NULL
+                user_id               INTEGER PRIMARY KEY,
+                chat_id               INTEGER NOT NULL,
+                bacino                TEXT    NOT NULL,
+                notifiche_realtime    BOOLEAN DEFAULT 0,
+                is_active             BOOLEAN DEFAULT 1,
+                ad_impressions        INTEGER DEFAULT 0,
+                last_ad_date          TEXT    DEFAULT NULL,
+                last_message_id       INTEGER DEFAULT NULL,
+                is_permanent_supporter BOOLEAN DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS user_lines (
@@ -74,7 +75,6 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_user_alarms_time ON user_alarms(orario);
         """)
         
-        # Retrocompatibilità: aggiungo la colonna se non esiste nei db vecchi
         try:
             con.execute("ALTER TABLE users ADD COLUMN last_ad_date TEXT DEFAULT NULL")
             logger.info("Migrazione schema DB: colonna last_ad_date aggiunta.")
@@ -84,6 +84,12 @@ def init_db() -> None:
         try:
             con.execute("ALTER TABLE users ADD COLUMN last_message_id INTEGER DEFAULT NULL")
             logger.info("Migrazione schema DB: colonna last_message_id aggiunta.")
+        except sqlite3.OperationalError:
+            pass  # Colonna già esistente
+
+        try:
+            con.execute("ALTER TABLE users ADD COLUMN is_permanent_supporter BOOLEAN DEFAULT 0")
+            logger.info("Migrazione schema DB: colonna is_permanent_supporter aggiunta.")
         except sqlite3.OperationalError:
             pass  # Colonna già esistente
             
@@ -132,14 +138,13 @@ def get_user(chat_id: int) -> dict | None:
 
 
 def deactivate_user(chat_id: int) -> bool:
-    """Set is_active=0. Returns True if user existed."""
+    """Set is_active=0. Returns True if user existed and was active."""
     with _conn() as con:
         cur = con.execute(
             "UPDATE users SET is_active = 0 WHERE user_id = ? AND is_active = 1",
             (chat_id,),
         )
         return cur.rowcount > 0
-    return False
 
 
 def get_all_active_users() -> list[dict]:
@@ -199,7 +204,6 @@ def set_realtime(chat_id: int, enabled: bool) -> bool:
             (1 if enabled else 0, chat_id),
         )
         return cur.rowcount > 0
-    return False
 
 
 # ── Ads ──────────────────────────────────────────────────────────────────────
@@ -219,15 +223,37 @@ def increment_ad_impression(user_id: int) -> None:
 
 
 def is_unlocked(chat_id: int) -> bool:
-    """Return True if the user has watched an ad today."""
+    """Return True if unlocked today (ad view) OR is a permanent supporter (Stars)."""
     today_iso = datetime.now().date().isoformat()
     with _conn() as con:
         row = con.execute(
-            "SELECT last_ad_date FROM users WHERE user_id = ?", (chat_id,)
+            "SELECT last_ad_date, is_permanent_supporter FROM users WHERE user_id = ?",
+            (chat_id,),
         ).fetchone()
-        if not row or not row["last_ad_date"]:
+        if not row:
+            return False
+        if row["is_permanent_supporter"]:
+            return True
+        if not row["last_ad_date"]:
             return False
         return row["last_ad_date"] == today_iso
+
+
+def is_permanent_supporter(chat_id: int) -> bool:
+    """Return True if user has donated Stars and has permanent unlock."""
+    with _conn() as con:
+        row = con.execute(
+            "SELECT is_permanent_supporter FROM users WHERE user_id = ?", (chat_id,)
+        ).fetchone()
+        return bool(row and row["is_permanent_supporter"])
+
+
+def set_permanent_supporter(chat_id: int) -> None:
+    """Mark user as permanent supporter (e.g. after Stars donation ≥ threshold)."""
+    with _conn() as con:
+        con.execute(
+            "UPDATE users SET is_permanent_supporter = 1 WHERE user_id = ?", (chat_id,)
+        )
 
 
 # ── Internal helpers ─────────────────────────────────────────────────────────
@@ -247,6 +273,7 @@ def _get_alarms(con: sqlite3.Connection, user_id: int) -> list[str]:
         (user_id,),
     ).fetchall()
     return [row["orario"] for row in rows]
+
 
 def update_last_message_id(user_id: int, message_id: int) -> None:
     """Save the Telegram message ID of the last sent alert/check."""

@@ -14,6 +14,7 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -84,20 +85,28 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
     chat_id = update.effective_chat.id
     stars = payment.total_amount   # amount in Stars
 
-    db.increment_ad_impression(chat_id)  # riutilizziamo il contatore esistente
-    logger.info("Stars ricevute: chat_id=%s stars=%d", chat_id, stars)
+    db.increment_ad_impression(chat_id)  # unlock per oggi
 
-    await update.message.reply_html(
-        f"🙏 <b>Grazie mille per le {stars} ⭐!</b>\n\n"
-        "Il tuo supporto mantiene BusBot in vita. "
-        "Continuerò ad aggiornarti sulle corse soppresse 🚍"
-    )
+    if stars >= 150:
+        # Donazioni >= 150 Stars = supporter permanente (no più blocco pubblicitario)
+        db.set_permanent_supporter(chat_id)
+        logger.info("Supporter permanente: chat_id=%s stars=%d", chat_id, stars)
+        await update.message.reply_html(
+            f"💛 <b>Grazie per le {stars} ⭐! Sei ora un Supporter Permanente!</b>\n\n"
+            "Da ora in poi <b>non vedrai mai più il blocco degli orari</b>. "
+            "Il tuo supporto mantiene BusBot in vita 🚍"
+        )
+    else:
+        logger.info("Stars ricevute: chat_id=%s stars=%d", chat_id, stars)
+        await update.message.reply_html(
+            f"🙏 <b>Grazie mille per le {stars} ⭐!</b>\n\n"
+            "Il tuo supporto mantiene BusBot in vita. "
+            "Continuerò ad aggiornarti sulle corse soppresse 🚍"
+        )
 
 
 def register_stars_handlers(app: Application) -> None:
     """Registra tutti gli handler per Telegram Stars."""
-    from telegram.ext import CallbackQueryHandler
-
     app.add_handler(CommandHandler("donate", donate_start))
     app.add_handler(CallbackQueryHandler(donate_callback, pattern=r"^donate_\d+$"))
     app.add_handler(PreCheckoutQueryHandler(precheckout_handler))
