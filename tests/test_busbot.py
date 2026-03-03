@@ -191,7 +191,7 @@ class TestFormatMultilineBulletin(unittest.TestCase):
     def test_nessuna_corsa(self):
         msg = format_multiline_bulletin({"8": [], "92": []})
         self.assertIn("✅", msg)
-        self.assertIn("Nessuna corsa soppressa", msg)
+        self.assertIn("Tutto regolare", msg)
 
     def test_linea_con_soppressione(self):
         routes = parse_html(PAGE_WITH_DATA, linea="8")

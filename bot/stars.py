@@ -41,8 +41,9 @@ async def donate_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         for stars, label in DONATION_OPTIONS
     ]
     await update.message.reply_html(
-        "⭐ <b>Supporta BusBot!</b>\n\n"
-        "BusBot è gratuito. Se ti è utile, offrimi qualcosa:\n\n"
+        "⭐ <b>Supporta BusBot</b>\n\n"
+        "Con una donazione di <b>150+ ⭐</b> sblocchi\n"
+        "gli orari <b>per sempre</b>, senza più spot!\n\n"
         "Scegli un'opzione:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
@@ -89,20 +90,20 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
     db.increment_ad_impression(chat_id)
 
     if stars >= 150:
-        # Donazioni >= 150 Stars = supporter permanente (no più blocco pubblicitario)
+        # Donazioni >= 150 Stars = supporter permanente
         db.set_permanent_supporter(chat_id)
         logger.info("Supporter permanente: chat_id=%s stars=%d", chat_id, stars)
         await update.message.reply_html(
-            f"💛 <b>Grazie per le {stars} ⭐! Sei ora un Supporter Permanente!</b>\n\n"
-            "Da ora in poi <b>non vedrai mai più il blocco degli orari</b>. "
-            "Il tuo supporto mantiene BusBot in vita 🚍"
+            f"💛 <b>Grazie per le {stars} ⭐!</b>\n\n"
+            "Sei ora <b>Supporter Permanente</b> —\n"
+            "orari sempre sbloccati, niente più spot! 🚍"
         )
     else:
         logger.info("Stars ricevute: chat_id=%s stars=%d", chat_id, stars)
         await update.message.reply_html(
-            f"🙏 <b>Grazie mille per le {stars} ⭐!</b>\n\n"
-            "Il tuo supporto mantiene BusBot in vita. "
-            "Continuerò ad aggiornarti sulle corse soppresse 🚍"
+            f"🙏 <b>Grazie per le {stars} ⭐!</b>\n\n"
+            "Orari sbloccati per oggi.\n"
+            "Con <b>150+ ⭐</b> li sblocchi per sempre! 🚍"
         )
 
 

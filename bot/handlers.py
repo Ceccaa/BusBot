@@ -48,19 +48,18 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     stato = "🟢 Attivo" if cfg.get("is_active") else "🔴 Disattivato"
-    realtime = "🔔 Attivo" if cfg.get("notifiche_realtime") else "🔕 Disattivato"
+    realtime = "🔔" if cfg.get("notifiche_realtime") else "🔕"
     linee_str = " · ".join(cfg.get("linee", [])) or "—"
     alarms_str = " · ".join(cfg.get("alarms", [])) or "nessuno"
+    supporter = "\n💛 Supporter permanente" if cfg.get("is_permanent_supporter") else ""
 
     reply_markup = get_ad_markup(chat_id)
     await update.message.reply_html(
-        f"📋 <b>Configurazione:</b>\n\n"
-        f"📍 Bacino: <b>{cfg['bacino']}</b>\n"
-        f"🚍 Linee: <b>{linee_str}</b>\n"
-        f"⏰ Sveglie: <b>{alarms_str}</b>\n"
-        f"🔔 Notifiche realtime: {realtime}\n"
-        f"📡 Stato: {stato}\n"
-        f"📊 Impressioni ads: {cfg.get('ad_impressions', 0)}",
+        f"📊 <b>La tua configurazione</b>\n\n"
+        f"{stato} · {realtime} Realtime\n"
+        f"📍 {cfg['bacino']} — 🚍 {linee_str}\n"
+        f"⏰ {alarms_str}"
+        f"{supporter}",
         reply_markup=reply_markup
     )
 
@@ -91,21 +90,21 @@ async def realtime_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if new_state:
         await update.message.reply_html(
-            "🔔 <b>Notifiche real-time attivate!</b>\n"
-            "Riceverai un alert immediato appena una corsa viene soppressa."
+            "🔔 <b>Notifiche real-time ON</b>\n"
+            "Riceverai un alert immediato per ogni nuova soppressione."
         )
     else:
         await update.message.reply_html(
-            "🔕 <b>Notifiche real-time disattivate.</b>\n"
+            "🔕 <b>Notifiche real-time OFF</b>\n"
             "Riceverai solo i bollettini periodici."
         )
 
 
 async def handle_web_app_reward(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Riceve Telegram.WebApp.sendData('ad_reward') dalla pagina Monetag.
+    """Riceve Telegram.WebApp.sendData('ad_reward') dalla pagina Adsterra.
 
     La pagina HTML su GitHub Pages chiama sendData() dopo che l'utente
-    ha completato la visione del Rewarded Interstitial Monetag.
+    ha completato il countdown dello spot pubblicitario.
     """
     if not update.message or not update.message.web_app_data:
         return

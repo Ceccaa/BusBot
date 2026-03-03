@@ -13,7 +13,7 @@ MONETAG_WEBAPP_URL = os.getenv("MONETAG_WEBAPP_URL", "")
 
 
 def get_ad_markup(chat_id: int) -> ReplyKeyboardMarkup | None:
-    """Crea il bottone KeyboardButton web_app per Monetag Rewarded Interstitial.
+    """Crea il bottone KeyboardButton web_app per lo spot pubblicitario.
 
     Mostrato solo se:
     - MONETAG_WEBAPP_URL è configurato
@@ -65,18 +65,18 @@ def format_multiline_bulletin(
             if is_unlocked:
                 for r in routes:
                     lines.append(
-                        f"   • Da: {r['inizio']} → {r['fine']} "
+                        f"   • {r['inizio']} → {r['fine']} "
                         f"| {r['dalle']} — {r['alle']}"
                     )
             else:
-                lines.append(f"   🔒 {len(routes)} corsa/e oscurata/e — guarda uno spot per i dettagli")
+                lines.append(f"   🔒 {len(routes)} corsa/e nascosta/e")
         else:
-            lines.append(f"🚆 Linea <b>{linea}</b>: ✅ Nessuna corsa soppressa")
+            lines.append(f"🚆 Linea <b>{linea}</b>: ✅ Tutto regolare")
 
     if not is_unlocked:
         lines.append(
-            "\n🔒 <b>Orari nascosti.</b>\n"
-            "Guarda uno spot veloce dal bottone 👇 per sbloccare fermata e orario esatti!"
+            "\n🔒 <b>Dettagli bloccati</b> — guarda uno spot dal bottone 👇\n"
+            "<i>Oppure usa /donate per sbloccarli per sempre!</i>"
         )
 
     return "\n".join(lines)
@@ -97,18 +97,17 @@ def format_alarm_bulletin(
             if is_unlocked:
                 for r in routes:
                     lines.append(
-                        f"   • Da: {r['inizio']} → {r['fine']} "
+                        f"   • {r['inizio']} → {r['fine']} "
                         f"| {r['dalle']} — {r['alle']}"
                     )
             else:
-                lines.append(f"   🔒 {len(routes)} corsa/e oscurata/e — guarda uno spot per i dettagli")
+                lines.append(f"   🔒 {len(routes)} corsa/e nascosta/e")
         else:
             lines.append(f"🚆 Linea <b>{linea}</b>: ✅ Tutto regolare")
 
     if not is_unlocked:
         lines.append(
-            "\n🔒 <b>Orario oscurato.</b>\n"
-            "Usa il bottone Ads 👇 per sbloccare i dettagli di oggi."
+            "\n🔒 <b>Dettagli bloccati</b> — guarda uno spot dal bottone 👇"
         )
 
     lines.append("\nBuona fortuna 🍀")
@@ -132,8 +131,7 @@ def format_realtime_alert(linea: str, routes: list[dict], is_unlocked: bool = Fa
                 f"| {r['inizio']} → {r['fine']}"
             )
     else:
-        lines.append(f"   🔒 {len(routes)} corsa/e oscurata/e")
-        lines.append("\n(Guarda un Ad dal bottone qui sotto per sbloccare l'orario effettivo 👇)")
+        lines.append(f"   🔒 {len(routes)} corsa/e nascosta/e")
+        lines.append("\n<i>Sblocca i dettagli dal bottone 👇 o con /donate</i>")
 
-    lines.append("\n🤬 Il bus ti ha mollato a piedi?")
     return "\n".join(lines)

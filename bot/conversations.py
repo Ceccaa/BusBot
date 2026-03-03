@@ -44,9 +44,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         for bacino, label in BACINI.items()
     ]
     await update.message.reply_html(
-        "👋 <b>Benvenuto su BusBot!</b>\n\n"
-        "Monitoro le corse non garantite di Start Romagna "
-        "e ti avviso quando il tuo autobus è soppresso.\n\n"
+        "🚍 <b>BusBot</b> \u2014 Corse soppresse Start Romagna\n"
+        "\n"
+        "Ti avviso quando il tuo bus è soppresso.\n\n"
         "📍 <b>Scegli il tuo bacino:</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
@@ -88,18 +88,18 @@ async def scegli_linee(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     linee_str = " · ".join(linee)
     await update.message.reply_html(
-        f"✅ <b>Configurazione completata!</b>\n\n"
-        f"📍 Bacino: <b>{bacino}</b>\n"
-        f"🚍 Linee: <b>{linee_str}</b>\n\n"
-        "Riceverai notifiche automatiche per le corse soppresse.\n\n"
-        "📋 <b>Comandi:</b>\n"
-        "/check — Controlla subito\n"
-        "/alarms — Imposta sveglia pendolare\n"
-        "/realtime — Toggle notifiche istantanee\n"
-        "/status — Configurazione attuale\n"
+        "✅ <b>Tutto pronto!</b>\n\n"
+        f"📍 {bacino} — 🚍 {linee_str}\n\n"
+        "📋 <b>Comandi</b>\n"
+        "/check — Controlla ora\n"
+        "/alarms — Sveglia pendolare\n"
+        "/realtime — Notifiche istantanee\n"
+        "/status — Configurazione\n"
         "/donate — ⭐ Supporta BusBot\n"
-        "/stop — Disattiva monitoraggio\n"
-        "/start — Riconfigura",
+        "/stop — Disattiva\n"
+        "/start — Riconfigura\n\n"
+        "ℹ️ <i>Gli orari esatti si sbloccano ogni 24h\n"
+        "guardando un breve spot. Con /donate li sblocchi per sempre!</i>",
     )
 
     # Check immediato su tutte le linee
