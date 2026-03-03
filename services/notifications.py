@@ -15,15 +15,19 @@ MONETAG_WEBAPP_URL = os.getenv("MONETAG_WEBAPP_URL", "")
 def get_ad_markup(chat_id: int) -> ReplyKeyboardMarkup | None:
     """Crea il bottone KeyboardButton web_app per Monetag Rewarded Interstitial.
 
-    Apre la pagina GitHub Pages con il Monetag SDK come Telegram Mini App,
-    che al completamento invia sendData('ad_reward') per sbloccare gli orari.
-    Non mostrato ai supporter permanenti (Stars ≥ 150).
+    Mostrato solo se:
+    - MONETAG_WEBAPP_URL è configurato
+    - L'utente non è già sbloccato oggi
+    - L'utente non è un supporter permanente
     """
     if not MONETAG_WEBAPP_URL:
         return None
 
     if db.is_permanent_supporter(chat_id):
         return None
+
+    if db.is_unlocked(chat_id):
+        return None  # già sbloccato oggi — niente bottone
 
     button = KeyboardButton(
         "📢 Sblocca orari (guarda uno spot)",
@@ -49,13 +53,13 @@ def _obfuscate(time_str: str) -> str:
 
 
 def format_multiline_bulletin(
-    linee_status: dict[str, list[dict]], is_unlocked: bool = True
+    linee_status: dict[str, list[dict]], is_unlocked: bool = False
 ) -> str:
     """Genera il bollettino soppressioni per più linee.
 
     Args:
         linee_status: {"8": [...routes], "92": [], "1A": [...]}
-        is_unlocked: Se False, nasconde i minuti esatti delle soppressioni.
+        is_unlocked: Se False (default), nasconde fermata e orario esatti.
 
     Returns:
         Testo HTML Telegram.
@@ -67,20 +71,21 @@ def format_multiline_bulletin(
     for linea, routes in sorted(linee_status.items()):
         if routes:
             lines.append(f"🚆 Linea <b>{linea}</b>: ❌ {len(routes)} corsa/e non garantita/e")
-            for r in routes:
-                dalle = r["dalle"] if is_unlocked else _obfuscate(r["dalle"])
-                alle = r["alle"] if is_unlocked else _obfuscate(r["alle"])
-                lines.append(
-                    f"   • Da: {r['inizio']} → {r['fine']} "
-                    f"| {dalle} — {alle}"
-                )
+            if is_unlocked:
+                for r in routes:
+                    lines.append(
+                        f"   • Da: {r['inizio']} → {r['fine']} "
+                        f"| {r['dalle']} — {r['alle']}"
+                    )
+            else:
+                lines.append(f"   🔒 {len(routes)} corsa/e oscurata/e — guarda uno spot per i dettagli")
         else:
             lines.append(f"🚆 Linea <b>{linea}</b>: ✅ Nessuna corsa soppressa")
 
     if not is_unlocked:
         lines.append(
             "\n🔒 <b>Orari nascosti.</b>\n"
-            "Guarda uno spot veloce dal bottone rosso 👇 per sbloccare l'esattezza del minuto per oggi!"
+            "Guarda uno spot veloce dal bottone 👇 per sbloccare fermata e orario esatti!"
         )
 
     return "\n".join(lines)
@@ -90,31 +95,29 @@ def format_multiline_bulletin(
 
 
 def format_alarm_bulletin(
-    orario: str, linee_status: dict[str, list[dict]], is_unlocked: bool = True
+    orario: str, linee_status: dict[str, list[dict]], is_unlocked: bool = False
 ) -> str:
-    """Genera il bollettino per la sveglia del pendolare.
-
-    Inviato sempre, anche se tutto è regolare.
-    """
+    """Genera il bollettino per la sveglia del pendolare."""
     lines = [f"⏰ <b>Bollettino delle {orario}</b>\n"]
 
     for linea, routes in sorted(linee_status.items()):
         if routes:
             lines.append(f"🚆 Linea <b>{linea}</b>: ❌ {len(routes)} corsa/e non garantita/e")
-            for r in routes:
-                dalle = r["dalle"] if is_unlocked else _obfuscate(r["dalle"])
-                alle = r["alle"] if is_unlocked else _obfuscate(r["alle"])
-                lines.append(
-                    f"   • Da: {r['inizio']} → {r['fine']} "
-                    f"| {dalle} — {alle}"
-                )
+            if is_unlocked:
+                for r in routes:
+                    lines.append(
+                        f"   • Da: {r['inizio']} → {r['fine']} "
+                        f"| {r['dalle']} — {r['alle']}"
+                    )
+            else:
+                lines.append(f"   🔒 {len(routes)} corsa/e oscurata/e — guarda uno spot per i dettagli")
         else:
             lines.append(f"🚆 Linea <b>{linea}</b>: ✅ Tutto regolare")
 
     if not is_unlocked:
         lines.append(
-            "\n🔒 <b>Minuto oscurato.</b>\n"
-            "Usa il bottone Ads 👇 per sbloccare gli orari di oggi."
+            "\n🔒 <b>Orario oscurato.</b>\n"
+            "Usa il bottone Ads 👇 per sbloccare i dettagli di oggi."
         )
 
     lines.append("\nBuona fortuna 🍀")
@@ -124,25 +127,22 @@ def format_alarm_bulletin(
 # ── Alert real-time (nuova soppressione) ─────────────────────────────────────
 
 
-def format_realtime_alert(linea: str, routes: list[dict], is_unlocked: bool = True) -> str:
+def format_realtime_alert(linea: str, routes: list[dict], is_unlocked: bool = False) -> str:
     """Notifica immediata per nuova soppressione."""
     lines = [
         "⚠️ <b>NUOVA CORSA SOPPRESSA</b>\n",
         f"🚆 Linea <b>{linea}</b>",
     ]
 
-    for r in routes:
-        dalle = r["dalle"] if is_unlocked else _obfuscate(r["dalle"])
-        alle = r["alle"] if is_unlocked else _obfuscate(r["alle"])
-        lines.append(
-            f"   {dalle} — {alle} "
-            f"| {r['inizio']} → {r['fine']}"
-        )
+    if is_unlocked:
+        for r in routes:
+            lines.append(
+                f"   {r['dalle']} — {r['alle']} "
+                f"| {r['inizio']} → {r['fine']}"
+            )
+    else:
+        lines.append(f"   🔒 {len(routes)} corsa/e oscurata/e")
+        lines.append("\n(Guarda un Ad dal bottone qui sotto per sbloccare l'orario effettivo 👇)")
 
     lines.append("\n🤬 Il bus ti ha mollato a piedi?")
-    if not is_unlocked:
-        lines.append(
-            "\n(PS: Guarda un Ad dal bottone qui sotto per sbloccare l'orario effettivo 👇)"
-        )
-
     return "\n".join(lines)

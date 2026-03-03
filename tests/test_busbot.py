@@ -241,8 +241,15 @@ class TestFormatRealtimeAlert(unittest.TestCase):
         self.assertIn("Linea <b>8</b>", msg)
 
     def test_include_orario(self):
-        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE])
+        """Quando sbloccato, mostra l'orario esatto."""
+        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE], is_unlocked=True)
         self.assertIn("07:10", msg)
+
+    def test_orario_oscurato_quando_bloccato(self):
+        """Quando bloccato (default), nasconde orario e fermata."""
+        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE])  # default is_unlocked=False
+        self.assertNotIn("07:10", msg)
+        self.assertIn("🔒", msg)
 
 
 # ════════════════════════════════════════════════════════════════════════════
