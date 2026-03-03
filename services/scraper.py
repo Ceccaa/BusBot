@@ -5,10 +5,10 @@ Aggiunto retry HTTP (max 3 tentativi, backoff esponenziale).
 """
 
 import logging
-import time
+import asyncio
 from datetime import date
 
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ RETRY_BACKOFF = 2  # secondi
 # ── Funzioni pubbliche ──────────────────────────────────────────────────────
 
 
-def get_cancelled_routes(bacino: str, linea: str | None = None) -> list[dict]:
-    """Scarica le corse soppresse dal sito Start Romagna.
+async def get_cancelled_routes(bacino: str, linea: str | None = None) -> list[dict]:
+    """Scarica le corse soppresse dal sito Start Romagna (asincrono).
 
     Args:
         bacino: "Forli-Cesena", "Rimini" o "Ravenna".
@@ -36,20 +36,24 @@ def get_cancelled_routes(bacino: str, linea: str | None = None) -> list[dict]:
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = requests.get(BASE_URL, params=params, timeout=TIMEOUT)
-            response.raise_for_status()
-            return parse_html(response.text, linea)
-        except requests.RequestException as exc:
+            timeout_ctrl = aiohttp.ClientTimeout(total=TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout_ctrl) as session:
+                async with session.get(BASE_URL, params=params) as response:
+                    response.raise_for_status()
+                    html_text = await response.text()
+                    return parse_html(html_text, linea)
+        except aiohttp.ClientError as exc:
             if attempt < MAX_RETRIES:
                 wait = RETRY_BACKOFF ** attempt
                 logger.warning(
                     "Tentativo %d/%d fallito per %s: %s — retry in %ds",
                     attempt, MAX_RETRIES, bacino, exc, wait,
                 )
-                time.sleep(wait)
+                await asyncio.sleep(wait)
             else:
                 logger.error("Errore HTTP definitivo per %s: %s", bacino, exc)
                 return []
+    return []
 
 
 def parse_html(html: str, linea: str | None = None) -> list[dict]:

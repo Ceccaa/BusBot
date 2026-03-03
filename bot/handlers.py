@@ -24,16 +24,17 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("🔄 Controllo in corso...")
 
     linee_status = {
-        linea: scraper.get_cancelled_routes(cfg["bacino"], linea)
+        linea: await scraper.get_cancelled_routes(cfg["bacino"], linea)
         for linea in cfg["linee"]
     }
     
     is_unlocked = db.is_unlocked(chat_id)
     reply_markup = get_adsgram_markup(chat_id)
-    await update.message.reply_html(
+    msg = await update.message.reply_html(
         format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),
         reply_markup=reply_markup
     )
+    db.update_last_message_id(chat_id, msg.message_id)
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -51,7 +51,8 @@ def init_db() -> None:
                 notifiche_realtime BOOLEAN DEFAULT 0,
                 is_active          BOOLEAN DEFAULT 1,
                 ad_impressions     INTEGER DEFAULT 0,
-                last_ad_date       TEXT    DEFAULT NULL
+                last_ad_date       TEXT    DEFAULT NULL,
+                last_message_id    INTEGER DEFAULT NULL
             );
 
             CREATE TABLE IF NOT EXISTS user_lines (
@@ -77,6 +78,12 @@ def init_db() -> None:
         try:
             con.execute("ALTER TABLE users ADD COLUMN last_ad_date TEXT DEFAULT NULL")
             logger.info("Migrazione schema DB: colonna last_ad_date aggiunta.")
+        except sqlite3.OperationalError:
+            pass  # Colonna già esistente
+            
+        try:
+            con.execute("ALTER TABLE users ADD COLUMN last_message_id INTEGER DEFAULT NULL")
+            logger.info("Migrazione schema DB: colonna last_message_id aggiunta.")
         except sqlite3.OperationalError:
             pass  # Colonna già esistente
             
@@ -240,3 +247,11 @@ def _get_alarms(con: sqlite3.Connection, user_id: int) -> list[str]:
         (user_id,),
     ).fetchall()
     return [row["orario"] for row in rows]
+
+def update_last_message_id(user_id: int, message_id: int) -> None:
+    """Save the Telegram message ID of the last sent alert/check."""
+    with _conn() as con:
+        con.execute(
+            "UPDATE users SET last_message_id = ? WHERE user_id = ?",
+            (message_id, user_id),
+        )

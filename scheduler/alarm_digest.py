@@ -44,12 +44,13 @@ async def alarm_digest_job(context) -> None:
         reply_markup = get_adsgram_markup(chat_id)
 
         try:
-            await context.bot.send_message(
+            msg = await context.bot.send_message(
                 chat_id=chat_id,
                 text=text,
                 parse_mode="HTML",
                 reply_markup=reply_markup,
             )
+            db.update_last_message_id(chat_id, msg.message_id)
             logger.info("Alarm digest inviato → chat_id=%s (%s)", chat_id, now)
         except telegram.error.Forbidden:
             logger.warning("Bot bloccato da chat_id=%s — disattivo l'utente.", chat_id)

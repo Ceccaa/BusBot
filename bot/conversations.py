@@ -104,7 +104,7 @@ async def scegli_linee(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     # Check immediato su tutte le linee
     linee_status = {
-        linea: scraper.get_cancelled_routes(bacino, linea) for linea in linee
+        linea: await scraper.get_cancelled_routes(bacino, linea) for linea in linee
     }
     
     is_unlocked = db.is_unlocked(chat_id)
@@ -190,6 +190,7 @@ def register_conversation_handlers(app: Application) -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         per_message=False,
+        allow_reentry=True,
     ))
 
     app.add_handler(ConversationHandler(
@@ -199,4 +200,5 @@ def register_conversation_handlers(app: Application) -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         per_message=False,
+        allow_reentry=True,
     ))

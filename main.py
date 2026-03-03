@@ -46,7 +46,7 @@ ALARM_INTERVAL = 60        # 1 minuto
 
 async def post_init(_application: Application) -> None:
     """Avviato da PTB dopo che l'event loop è attivo."""
-    await run_ads_server()
+    await run_ads_server(bot=_application.bot)
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────

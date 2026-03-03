@@ -250,22 +250,22 @@ class TestFormatRealtimeAlert(unittest.TestCase):
 # ════════════════════════════════════════════════════════════════════════════
 
 
-class TestFetchReale(unittest.TestCase):
+class TestFetchReale(unittest.IsolatedAsyncioTestCase):
     """Verifica che il sito sia raggiungibile e il parsing funzioni."""
 
-    def test_fetch_forli_cesena(self):
+    async def test_fetch_forli_cesena(self):
         from services.scraper import get_cancelled_routes
-        result = get_cancelled_routes("Forli-Cesena")
+        result = await get_cancelled_routes("Forli-Cesena")
         self.assertIsInstance(result, list)
 
-    def test_fetch_rimini(self):
+    async def test_fetch_rimini(self):
         from services.scraper import get_cancelled_routes
-        result = get_cancelled_routes("Rimini")
+        result = await get_cancelled_routes("Rimini")
         self.assertIsInstance(result, list)
 
-    def test_fetch_ravenna(self):
+    async def test_fetch_ravenna(self):
         from services.scraper import get_cancelled_routes
-        result = get_cancelled_routes("Ravenna")
+        result = await get_cancelled_routes("Ravenna")
         self.assertIsInstance(result, list)
 
 

@@ -40,7 +40,7 @@ async def suppression_check_job(context) -> None:
         by_bacino.setdefault(user["bacino"], []).append(user)
 
     for bacino, user_list in by_bacino.items():
-        all_routes = scraper.get_cancelled_routes(bacino)
+        all_routes = await scraper.get_cancelled_routes(bacino)
 
         for user in user_list:
             chat_id = user["chat_id"]
@@ -75,12 +75,13 @@ async def _send_bulletin(bot, chat_id: int, linee_status: dict, linee: list[str]
     try:
         is_unlocked = db.is_unlocked(chat_id)
         reply_markup = get_adsgram_markup(chat_id)
-        await bot.send_message(
+        msg = await bot.send_message(
             chat_id=chat_id,
             text=format_multiline_bulletin(linee_status, is_unlocked=is_unlocked),
             parse_mode="HTML",
             reply_markup=reply_markup,
         )
+        db.update_last_message_id(chat_id, msg.message_id)
         logger.info("Notifica → chat_id=%s (linee: %s)", chat_id, ", ".join(linee))
     except telegram.error.Forbidden:
         logger.warning("Bot bloccato da chat_id=%s — disattivo l'utente.", chat_id)
