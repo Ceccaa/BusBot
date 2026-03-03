@@ -42,7 +42,7 @@ async def get_cancelled_routes(bacino: str, linea: str | None = None) -> list[di
                     response.raise_for_status()
                     html_text = await response.text()
                     return parse_html(html_text, linea)
-        except aiohttp.ClientError as exc:
+        except Exception as exc:
             if attempt < MAX_RETRIES:
                 wait = RETRY_BACKOFF ** attempt
                 logger.warning(

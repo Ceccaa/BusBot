@@ -72,6 +72,12 @@ async def handle_ad_view(request: web.Request) -> web.Response:
     <h2>Attendere...</h2>
     <p>Caricamento annuncio pubblicitario in corso...</p>
     <script>
+        // Gestione errori globale
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            document.body.innerHTML = "<h2>Errore JS</h2><p>" + msg + "</p><button onclick='Telegram.WebApp.close()'>Chiudi</button>";
+            return false;
+        };
+
         // Inizializza l'ambiente Telegram
         Telegram.WebApp.ready();
 
@@ -84,29 +90,36 @@ async def handle_ad_view(request: web.Request) -> web.Response:
         const userId = parts[1];
 
         if (!blockId) {
-            document.body.innerHTML = "<h2>Errore: Block ID mancante</h2>";
+            document.body.innerHTML = "<h2>Errore: Costanti mancanti</h2><p>Nessun start_param rilevato (Block ID mancante).</p>";
+        } else if (typeof window.Adsgram === 'undefined') {
+            document.body.innerHTML = "<h2>Errore caricamento Adsgram</h2><p>Script non caricato. Disattiva eventuale AdBlock, oppure la connessione è limitata.</p>";
         } else {
-            // Inizializza l'interfaccia di Adsgram
-            const AdController = window.Adsgram.init({ blockId: blockId });
+            try {
+                // Inizializza l'interfaccia di Adsgram
+                const AdController = window.Adsgram.init({ blockId: blockId });
 
-            // Ordina di mostrare subito l'annuncio in formato Reward
-            AdController.show().then((result) => {
-                // L'UTENTE HA COMPLETATO LA VISIONE
-                if (userId) {
-                    // Notifichiamo BusBot usando path relativo, così Cloudflare lo risolve
-                    fetch(`/reward?userid=${userId}`)
-                    .then(() => {
-                        // Chiudi il popup riattivando la chat di Telegram
-                        Telegram.WebApp.close();
-                    });
-                } else {
-                     Telegram.WebApp.close();
-                }
-            }).catch((result) => {
-                // L'utente ha chiuso il video in anticipo o errore
-                Telegram.WebApp.showAlert("Pubblicità non guardata, errore o AdBlock attivo.");
-                Telegram.WebApp.close();
-            });
+                // Ordina di mostrare subito l'annuncio in formato Reward
+                AdController.show().then((result) => {
+                    // L'UTENTE HA COMPLETATO LA VISIONE
+                    if (userId) {
+                        // Notifichiamo BusBot usando path relativo, così Cloudflare lo risolve
+                        fetch(`/reward?userid=${userId}`)
+                        .then(() => {
+                            // Chiudi il popup riattivando la chat di Telegram
+                            Telegram.WebApp.close();
+                        });
+                    } else {
+                         Telegram.WebApp.close();
+                    }
+                }).catch((err) => {
+                    // L'utente ha chiuso il video in anticipo o errore
+                    console.error("AdController err:", err);
+                    Telegram.WebApp.showAlert("Pubblicità non guardata, errore o AdBlock attivo.");
+                    Telegram.WebApp.close();
+                });
+            } catch (err) {
+                document.body.innerHTML = "<h2>Errore Runtime</h2><p>" + err.message + "</p>";
+            }
         }
     </script>
 </body>

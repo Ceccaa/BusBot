@@ -36,7 +36,7 @@ async def alarm_digest_job(context) -> None:
             continue
 
         linee_status = {
-            linea: scraper.get_cancelled_routes(bacino, linea)
+            linea: await scraper.get_cancelled_routes(bacino, linea)
             for linea in linee
         }
 
