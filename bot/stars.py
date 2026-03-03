@@ -57,7 +57,7 @@ async def donate_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     except (IndexError, ValueError):
         return
 
-    label = next((l for s, l in DONATION_OPTIONS if s == stars), f"{stars} ⭐")
+    label = next((lbl for s, lbl in DONATION_OPTIONS if s == stars), f"{stars} ⭐")
 
     await context.bot.send_invoice(
         chat_id=query.from_user.id,

@@ -44,7 +44,7 @@ ALARM_INTERVAL = 60        # 1 minuto
 # ── Post-init hook (avvia aiohttp server nello stesso event loop di PTB) ─────
 
 
-async def post_init(application: Application) -> None:
+async def post_init(_application: Application) -> None:
     """Avviato da PTB dopo che l'event loop è attivo."""
     await run_ads_server()
 

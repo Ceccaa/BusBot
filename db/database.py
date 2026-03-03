@@ -8,7 +8,8 @@ import logging
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
+from typing import Any
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ def get_user(chat_id: int) -> dict | None:
         ).fetchone()
         if not row:
             return None
-        user = dict(row)
+        user: dict[str, Any] = dict(row)
         user["linee"] = _get_lines(con, chat_id)
         user["alarms"] = _get_alarms(con, chat_id)
         return user
@@ -131,6 +132,7 @@ def deactivate_user(chat_id: int) -> bool:
             (chat_id,),
         )
         return cur.rowcount > 0
+    return False
 
 
 def get_all_active_users() -> list[dict]:
@@ -141,7 +143,7 @@ def get_all_active_users() -> list[dict]:
         ).fetchall()
         result = []
         for row in rows:
-            user = dict(row)
+            user: dict[str, Any] = dict(row)
             user["linee"] = _get_lines(con, user["user_id"])
             user["alarms"] = _get_alarms(con, user["user_id"])
             result.append(user)
@@ -172,7 +174,7 @@ def get_users_with_alarm(orario: str) -> list[dict]:
         """, (orario,)).fetchall()
         result = []
         for row in rows:
-            user = dict(row)
+            user: dict[str, Any] = dict(row)
             user["linee"] = _get_lines(con, user["user_id"])
             user["alarms"] = _get_alarms(con, user["user_id"])
             result.append(user)
@@ -190,6 +192,7 @@ def set_realtime(chat_id: int, enabled: bool) -> bool:
             (1 if enabled else 0, chat_id),
         )
         return cur.rowcount > 0
+    return False
 
 
 # ── Ads ──────────────────────────────────────────────────────────────────────

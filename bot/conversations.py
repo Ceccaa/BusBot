@@ -16,7 +16,7 @@ from telegram.ext import (
 
 from db import database as db
 from services import scraper
-from services.notifications import format_multiline_bulletin
+from services.notifications import format_multiline_bulletin, get_adsgram_markup
 
 logger = logging.getLogger(__name__)
 

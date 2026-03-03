@@ -113,7 +113,7 @@ def format_alarm_bulletin(
 def format_realtime_alert(linea: str, routes: list[dict], is_unlocked: bool = True) -> str:
     """Notifica immediata per nuova soppressione."""
     lines = [
-        f"⚠️ <b>NUOVA CORSA SOPPRESSA</b>\n",
+        "⚠️ <b>NUOVA CORSA SOPPRESSA</b>\n",
         f"🚆 Linea <b>{linea}</b>",
     ]
 
