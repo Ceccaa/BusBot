@@ -116,7 +116,30 @@ async def handle_web_app_reward(update: Update, context: ContextTypes.DEFAULT_TY
     db.increment_ad_impression(chat_id)
     logger.info("Ad reward (Monetag) ricevuto per chat_id=%d", chat_id)
 
-    await unlock_message_for_user(context.bot, chat_id)
+    # 1. Prova a modificare il vecchio messaggio in-place
+    edited = await unlock_message_for_user(context.bot, chat_id)
+
+    # 2. Se l'edit non è riuscito (o last_message_id era NULL),
+    #    invia comunque il bollettino sbloccato come nuovo messaggio
+    if not edited:
+        user = db.get_user(chat_id)
+        if user and user.get("linee"):
+            linee_status = {
+                linea: await scraper.get_cancelled_routes(user["bacino"], linea)
+                for linea in user["linee"]
+            }
+            msg = await context.bot.send_message(
+                chat_id=chat_id,
+                text=format_multiline_bulletin(linee_status, is_unlocked=True),
+                parse_mode="HTML",
+            )
+            db.update_last_message_id(chat_id, msg.message_id)
+        else:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="✅ <b>Orari sbloccati per oggi!</b>\nUsa /check per vedere il bollettino.",
+                parse_mode="HTML",
+            )
 
 
 def register_command_handlers(app: Application) -> None:

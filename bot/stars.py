@@ -85,7 +85,8 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
     chat_id = update.effective_chat.id
     stars = payment.total_amount   # amount in Stars
 
-    db.increment_ad_impression(chat_id)  # unlock per oggi
+    # Sblocca orari per oggi (riusa increment_ad_impression che setta last_ad_date)
+    db.increment_ad_impression(chat_id)
 
     if stars >= 150:
         # Donazioni >= 150 Stars = supporter permanente (no più blocco pubblicitario)

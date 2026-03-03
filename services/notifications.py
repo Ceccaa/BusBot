@@ -3,7 +3,7 @@
 import logging
 import os
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
+from telegram import KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
 
 from db import database as db
 
@@ -38,15 +38,6 @@ def get_ad_markup(chat_id: int) -> ReplyKeyboardMarkup | None:
         resize_keyboard=True,
         one_time_keyboard=True,
     )
-
-
-# ── Metodi di utilità ────────────────────────────────────────────────────────
-
-def _obfuscate(time_str: str) -> str:
-    """Trasforma un orario HH:MM in HH:XX (es: 13:14 -> 13:XX)."""
-    if not isinstance(time_str, str) or len(time_str) < 5:
-        return str(time_str)
-    return str(time_str)[:3] + "XX"
 
 
 # ── Bollettino multi-linea (soppressioni periodiche) ─────────────────────────

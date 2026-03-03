@@ -19,19 +19,25 @@ from services.notifications import format_multiline_bulletin
 logger = logging.getLogger(__name__)
 
 
-async def unlock_message_for_user(bot: Bot, chat_id: int) -> None:
-    """Rigenera il bollettino in chiaro e aggiorna l'ultimo messaggio nel DB."""
+async def unlock_message_for_user(bot: Bot, chat_id: int) -> bool:
+    """Rigenera il bollettino in chiaro e aggiorna l'ultimo messaggio nel DB.
+
+    Returns:
+        True se l'edit del messaggio è riuscito, False altrimenti.
+    """
     user = db.get_user(chat_id)
     if not user:
-        return
+        logger.warning("unlock_message_for_user: utente %s non trovato", chat_id)
+        return False
 
     last_msg_id = user.get("last_message_id")
     if not last_msg_id:
-        return
+        logger.warning("unlock_message_for_user: last_message_id NULL per chat_id=%s", chat_id)
+        return False
 
     linee = user.get("linee", [])
     if not linee:
-        return
+        return False
 
     linee_status = {
         linea: await get_cancelled_routes(user["bacino"], linea)
@@ -45,11 +51,13 @@ async def unlock_message_for_user(bot: Bot, chat_id: int) -> None:
             chat_id=chat_id,
             message_id=last_msg_id,
             parse_mode="HTML",
-            reply_markup=None,  # Rimuove il bottone Ads
+            reply_markup=None,
         )
         logger.info("Messaggio %s sbloccato per chat_id=%s", last_msg_id, chat_id)
+        return True
     except TelegramError as e:
         logger.warning(
             "Impossibile sbloccare il messaggio %s per chat_id=%s: %s",
             last_msg_id, chat_id, e,
         )
+        return False

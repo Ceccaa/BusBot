@@ -53,7 +53,6 @@ async def get_cancelled_routes(bacino: str, linea: str | None = None) -> list[di
             else:
                 logger.error("Errore HTTP definitivo per %s: %s", bacino, exc)
                 return []
-    return []
 
 
 def parse_html(html: str, linea: str | None = None) -> list[dict]:

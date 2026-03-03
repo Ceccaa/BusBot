@@ -40,7 +40,8 @@ async def alarm_digest_job(context) -> None:
             for linea in linee
         }
 
-        text = format_alarm_bulletin(now, linee_status)
+        is_unlocked = db.is_unlocked(chat_id)
+        text = format_alarm_bulletin(now, linee_status, is_unlocked=is_unlocked)
         reply_markup = get_ad_markup(chat_id)
 
         try:

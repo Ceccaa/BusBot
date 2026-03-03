@@ -34,6 +34,14 @@ async def suppression_check_job(context) -> None:
 
     notified: dict = context.bot_data.setdefault("notified", {})
 
+    # Pulizia giornaliera: svuota il dict a mezzanotte per evitare memory leak
+    today_key = datetime.now().date().isoformat()
+    last_clean = context.bot_data.get("notified_clean_date")
+    if last_clean != today_key:
+        notified.clear()
+        context.bot_data["notified_clean_date"] = today_key
+        logger.info("Notified cache svuotata (nuovo giorno).")
+
     # Raggruppa per bacino → 1 richiesta HTTP per bacino
     by_bacino: dict[str, list[dict]] = {}
     for user in users:
