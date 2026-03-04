@@ -63,9 +63,9 @@ def format_multiline_bulletin(
         return (
             "🟠 <b>Potrebbero esserci variazioni</b>\n"
             f"sulle tue linee: <b>{linee_str}</b>\n\n"
-            "Sblocca il bollettino guardando\n"
+            "🔒 <b>Sblocca il bollettino</b> guardando\n"
             "un breve spot dal bottone 👇\n\n"
-            "<i>Oppure usa /donate per sbloccarli per sempre!</i>"
+            "⭐ <i>Oppure usa /donate per sbloccarli per sempre!</i>"
         )
 
     lines = ["📊 <b>Situazione Attuale:</b>\n"]
@@ -96,7 +96,7 @@ def format_alarm_bulletin(
             f"⏰ <b>Sveglia delle {orario}</b>\n\n"
             "🟠 <b>Potrebbero esserci variazioni</b>\n"
             f"sulle tue linee: <b>{linee_str}</b>\n\n"
-            "Sblocca il bollettino guardando\n"
+            "🔒 <b>Sblocca il bollettino</b> guardando\n"
             "un breve spot dal bottone 👇\n\n"
             "Buona fortuna 🍀"
         )
