@@ -1,4 +1,4 @@
-"""Test suite — Monetag reward flow — BusBot v2.0."""
+"""Test suite — AdsTerra reward flow — BusBot v2.0."""
 
 import tempfile
 import unittest

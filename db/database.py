@@ -10,6 +10,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -162,6 +163,21 @@ def get_all_active_users() -> list[dict]:
         return result
 
 
+def get_all_active_realtime_users() -> list[dict]:
+    """Return active users with real-time notifications enabled."""
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT * FROM users WHERE is_active = 1 AND notifiche_realtime = 1"
+        ).fetchall()
+        result = []
+        for row in rows:
+            user: dict[str, Any] = dict(row)
+            user["linee"] = _get_lines(con, user["user_id"])
+            user["alarms"] = _get_alarms(con, user["user_id"])
+            result.append(user)
+        return result
+
+
 # ── Alarms CRUD ──────────────────────────────────────────────────────────────
 
 
@@ -211,7 +227,7 @@ def set_realtime(chat_id: int, enabled: bool) -> bool:
 
 def increment_ad_impression(user_id: int) -> None:
     """Increment ad_impressions counter for a user and record today's date."""
-    today_iso = datetime.now().date().isoformat()
+    today_iso = datetime.now(tz=ZoneInfo("Europe/Rome")).date().isoformat()
     with _conn() as con:
         con.execute(
             """UPDATE users 
@@ -224,7 +240,7 @@ def increment_ad_impression(user_id: int) -> None:
 
 def is_unlocked(chat_id: int) -> bool:
     """Return True if unlocked today (ad view) OR is a permanent supporter (Stars)."""
-    today_iso = datetime.now().date().isoformat()
+    today_iso = datetime.now(tz=ZoneInfo("Europe/Rome")).date().isoformat()
     with _conn() as con:
         row = con.execute(
             "SELECT last_ad_date, is_permanent_supporter FROM users WHERE user_id = ?",

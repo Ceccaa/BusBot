@@ -7,6 +7,7 @@
 
 import logging
 from datetime import datetime, time as dt_time
+from zoneinfo import ZoneInfo
 
 import telegram
 
@@ -22,20 +23,20 @@ ACTIVE_END = dt_time(22, 0)
 
 async def suppression_check_job(context) -> None:
     """Job periodico: controlla soppressioni per tutti gli utenti attivi."""
-    now = datetime.now().time()
+    now = datetime.now(tz=ZoneInfo("Europe/Rome")).time()
     if not (ACTIVE_START <= now <= ACTIVE_END):
         return
 
-    users = db.get_all_active_users()
+    users = db.get_all_active_realtime_users()
     if not users:
         return
 
-    logger.info("Controllo soppressioni — %d utenti attivi", len(users))
+    logger.info("Controllo soppressioni — %d utenti realtime attivi", len(users))
 
     notified: dict = context.bot_data.setdefault("notified", {})
 
     # Pulizia giornaliera: svuota il dict a mezzanotte per evitare memory leak
-    today_key = datetime.now().date().isoformat()
+    today_key = datetime.now(tz=ZoneInfo("Europe/Rome")).date().isoformat()
     last_clean = context.bot_data.get("notified_clean_date")
     if last_clean != today_key:
         notified.clear()

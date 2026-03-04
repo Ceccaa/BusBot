@@ -22,6 +22,4 @@ COPY scheduler/ ./scheduler/
 VOLUME ["/app/data"]
 ENV DB_PATH=/app/data/busbot.db
 
-EXPOSE 8080
-
 CMD ["python", "main.py"]

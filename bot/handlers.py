@@ -24,8 +24,9 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text("🔄 Controllo in corso...")
 
+    all_routes = await scraper.get_cancelled_routes(cfg["bacino"])
     linee_status = {
-        linea: await scraper.get_cancelled_routes(cfg["bacino"], linea)
+        linea: [r for r in all_routes if scraper.linea_matches(r["linea"], linea)]
         for linea in cfg["linee"]
     }
     
@@ -113,7 +114,7 @@ async def handle_web_app_reward(update: Update, context: ContextTypes.DEFAULT_TY
 
     chat_id = update.effective_chat.id
     db.increment_ad_impression(chat_id)
-    logger.info("Ad reward (Monetag) ricevuto per chat_id=%d", chat_id)
+    logger.info("Ad reward (AdsTerra) ricevuto per chat_id=%d", chat_id)
 
     # 1. Prova a modificare il vecchio messaggio in-place
     edited = await unlock_message_for_user(context.bot, chat_id)

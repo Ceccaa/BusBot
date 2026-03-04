@@ -1,7 +1,7 @@
 """Reward logic per gli annunci pubblicitari — BusBot v2.0.
 
 Gestisce lo sblocco degli orari dopo che l'utente ha visualizzato
-un annuncio Monetag (Rewarded Interstitial) tramite Telegram Mini App.
+un annuncio AdsTerra (Rewarded Interstitial) tramite Telegram Mini App.
 
 Il reward arriva via Telegram.WebApp.sendData('ad_reward') dalla pagina
 GitHub Pages, senza necessità di alcun server HTTPS esposto.

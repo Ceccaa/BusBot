@@ -9,7 +9,6 @@ from services.scraper import parse_html, linea_matches
 from services.notifications import (
     format_multiline_bulletin,
     format_alarm_bulletin,
-    format_realtime_alert,
 )
 
 
@@ -188,14 +187,14 @@ class TestLineaMatches(unittest.TestCase):
 
 class TestFormatMultilineBulletin(unittest.TestCase):
 
-    def test_nessuna_corsa(self):
-        msg = format_multiline_bulletin({"8": [], "92": []})
+    def test_nessuna_corsa_sbloccato(self):
+        msg = format_multiline_bulletin({"8": [], "92": []}, is_unlocked=True)
         self.assertIn("✅", msg)
         self.assertIn("Tutto regolare", msg)
 
-    def test_linea_con_soppressione(self):
+    def test_linea_con_soppressione_sbloccato(self):
         routes = parse_html(PAGE_WITH_DATA, linea="8")
-        msg = format_multiline_bulletin({"8": routes, "92": []})
+        msg = format_multiline_bulletin({"8": routes, "92": []}, is_unlocked=True)
         self.assertIn("❌", msg)
         self.assertIn("Linea <b>8</b>", msg)
         self.assertIn("✅", msg)
@@ -205,51 +204,51 @@ class TestFormatMultilineBulletin(unittest.TestCase):
         msg = format_multiline_bulletin({})
         self.assertIn("⚠️", msg)
 
-    def test_piu_linee_con_soppressioni(self):
+    def test_piu_linee_con_soppressioni_sbloccato(self):
         routes_8 = parse_html(PAGE_WITH_DATA, linea="8")
         routes_s1 = parse_html(PAGE_WITH_DATA, linea="S1")
-        msg = format_multiline_bulletin({"8": routes_8, "S1": routes_s1})
+        msg = format_multiline_bulletin({"8": routes_8, "S1": routes_s1}, is_unlocked=True)
         self.assertEqual(msg.count("❌"), 2)
+
+    def test_messaggio_fomo_quando_bloccato(self):
+        routes = parse_html(PAGE_WITH_DATA, linea="8")
+        msg = format_multiline_bulletin({"8": routes, "92": []})
+        self.assertIn("🟠", msg)
+        self.assertIn("Potrebbero esserci variazioni", msg)
+        self.assertNotIn("❌", msg)
+        self.assertNotIn("✅", msg)
+
+    def test_fomo_non_rivela_nulla(self):
+        """Il messaggio locked non rivela se ci sono soppressioni o no."""
+        msg_con = format_multiline_bulletin({"8": parse_html(PAGE_WITH_DATA, linea="8")})
+        msg_senza = format_multiline_bulletin({"8": []})
+        # Entrambi mostrano lo stesso tipo di messaggio generico
+        self.assertIn("Potrebbero esserci variazioni", msg_con)
+        self.assertIn("Potrebbero esserci variazioni", msg_senza)
 
 
 class TestFormatAlarmBulletin(unittest.TestCase):
 
-    def test_include_orario(self):
-        msg = format_alarm_bulletin("07:10", {"8": []})
+    def test_include_orario_sbloccato(self):
+        msg = format_alarm_bulletin("07:10", {"8": []}, is_unlocked=True)
         self.assertIn("07:10", msg)
 
     def test_include_buona_fortuna(self):
         msg = format_alarm_bulletin("07:10", {"8": []})
         self.assertIn("Buona fortuna", msg)
 
-    def test_linea_soppressa(self):
+    def test_linea_soppressa_sbloccata(self):
         routes = parse_html(PAGE_WITH_DATA, linea="8")
-        msg = format_alarm_bulletin("15:57", {"8": routes})
+        msg = format_alarm_bulletin("15:57", {"8": routes}, is_unlocked=True)
         self.assertIn("❌", msg)
 
+    def test_fomo_quando_bloccato(self):
+        routes = parse_html(PAGE_WITH_DATA, linea="8")
+        msg = format_alarm_bulletin("15:57", {"8": routes})
+        self.assertIn("🟠", msg)
+        self.assertIn("Potrebbero esserci variazioni", msg)
+        self.assertNotIn("❌", msg)
 
-class TestFormatRealtimeAlert(unittest.TestCase):
-
-    SAMPLE_ROUTE = {
-        "linea": "8 Forlì", "inizio": "Schio",
-        "dalle": "07:10", "fine": "Centro",
-        "alle": "07:40", "data": "03-03-2026",
-    }
-
-    def test_include_linea(self):
-        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE])
-        self.assertIn("Linea <b>8</b>", msg)
-
-    def test_include_orario(self):
-        """Quando sbloccato, mostra l'orario esatto."""
-        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE], is_unlocked=True)
-        self.assertIn("07:10", msg)
-
-    def test_orario_oscurato_quando_bloccato(self):
-        """Quando bloccato (default), nasconde orario e fermata."""
-        msg = format_realtime_alert("8", [self.SAMPLE_ROUTE])  # default is_unlocked=False
-        self.assertNotIn("07:10", msg)
-        self.assertIn("🔒", msg)
 
 
 # ════════════════════════════════════════════════════════════════════════════

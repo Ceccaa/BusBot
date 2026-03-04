@@ -7,6 +7,7 @@ Gestisce Telegram Forbidden: deattiva utenti che hanno bloccato il bot.
 
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import telegram
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 async def alarm_digest_job(context) -> None:
     """Job al minuto: invia bollettino agli utenti con allarme adesso."""
-    now = datetime.now().strftime("%H:%M")
+    now = datetime.now(tz=ZoneInfo("Europe/Rome")).strftime("%H:%M")
     users = db.get_users_with_alarm(now)
 
     if not users:
