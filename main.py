@@ -4,6 +4,7 @@ Avvia in parallelo:
   1. Bot Telegram (polling)
   2. Job queue: suppression_check ogni 30 minuti
   3. Job queue: alarm_digest ogni 60 secondi
+  4. Admin dashboard API (porta ADMIN_PORT, default 8080)
 """
 
 import logging
@@ -39,7 +40,6 @@ CHECK_INTERVAL = 30 * 60   # 30 minuti
 ALARM_INTERVAL = 60        # 1 minuto
 
 
-
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
@@ -71,5 +71,7 @@ def main() -> None:
     app.run_polling()
 
 
+
 if __name__ == "__main__":
     main()
+

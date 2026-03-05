@@ -17,6 +17,7 @@ COPY bot/ ./bot/
 COPY db/ ./db/
 COPY services/ ./services/
 COPY scheduler/ ./scheduler/
+COPY admin/ ./admin/
 
 # Volume per persistere il database SQLite
 VOLUME ["/app/data"]

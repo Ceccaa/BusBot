@@ -298,3 +298,115 @@ def update_last_message_id(user_id: int, message_id: int) -> None:
             "UPDATE users SET last_message_id = ? WHERE user_id = ?",
             (message_id, user_id),
         )
+
+
+# ── Admin helpers ────────────────────────────────────────────────────────────
+
+
+def get_all_users() -> list[dict]:
+    """Return ALL users (active + inactive) with their lines and alarms."""
+    with _conn() as con:
+        rows = con.execute("SELECT * FROM users").fetchall()
+        result = []
+        for row in rows:
+            user: dict[str, Any] = dict(row)
+            user["linee"] = _get_lines(con, user["user_id"])
+            user["alarms"] = _get_alarms(con, user["user_id"])
+            result.append(user)
+        return result
+
+
+def delete_user(chat_id: int) -> bool:
+    """Delete a user and all related data (lines, alarms via CASCADE)."""
+    with _conn() as con:
+        cur = con.execute("DELETE FROM users WHERE user_id = ?", (chat_id,))
+        return cur.rowcount > 0
+
+
+def update_user(
+    chat_id: int,
+    *,
+    bacino: str | None = None,
+    is_active: bool | None = None,
+    notifiche_realtime: bool | None = None,
+    is_permanent_supporter: bool | None = None,
+    linee: list[str] | None = None,
+    alarms: list[str] | None = None,
+) -> bool:
+    """Update arbitrary user fields. Only provided fields are changed."""
+    with _conn() as con:
+        row = con.execute(
+            "SELECT user_id FROM users WHERE user_id = ?", (chat_id,)
+        ).fetchone()
+        if not row:
+            return False
+
+        updates = []
+        params = []
+        if bacino is not None:
+            updates.append("bacino = ?")
+            params.append(bacino)
+        if is_active is not None:
+            updates.append("is_active = ?")
+            params.append(1 if is_active else 0)
+        if notifiche_realtime is not None:
+            updates.append("notifiche_realtime = ?")
+            params.append(1 if notifiche_realtime else 0)
+        if is_permanent_supporter is not None:
+            updates.append("is_permanent_supporter = ?")
+            params.append(1 if is_permanent_supporter else 0)
+
+        if updates:
+            params.append(chat_id)
+            con.execute(
+                f"UPDATE users SET {', '.join(updates)} WHERE user_id = ?",
+                params,
+            )
+
+        if linee is not None:
+            normalized = [l.strip().upper() for l in linee if l.strip()]
+            con.execute("DELETE FROM user_lines WHERE user_id = ?", (chat_id,))
+            con.executemany(
+                "INSERT OR IGNORE INTO user_lines (user_id, linea) VALUES (?, ?)",
+                [(chat_id, l) for l in normalized],
+            )
+
+        if alarms is not None:
+            con.execute("DELETE FROM user_alarms WHERE user_id = ?", (chat_id,))
+            con.executemany(
+                "INSERT OR IGNORE INTO user_alarms (user_id, orario) VALUES (?, ?)",
+                [(chat_id, o.strip()) for o in alarms if o.strip()],
+            )
+
+        return True
+
+
+def get_stats() -> dict:
+    """Return aggregate statistics for the admin dashboard."""
+    with _conn() as con:
+        total = con.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        active = con.execute(
+            "SELECT COUNT(*) FROM users WHERE is_active = 1"
+        ).fetchone()[0]
+        realtime = con.execute(
+            "SELECT COUNT(*) FROM users WHERE is_active = 1 AND notifiche_realtime = 1"
+        ).fetchone()[0]
+        supporters = con.execute(
+            "SELECT COUNT(*) FROM users WHERE is_permanent_supporter = 1"
+        ).fetchone()[0]
+        today_iso = datetime.now(tz=ZoneInfo("Europe/Rome")).date().isoformat()
+        unlocked_today = con.execute(
+            "SELECT COUNT(*) FROM users WHERE last_ad_date = ?", (today_iso,)
+        ).fetchone()[0]
+        total_impressions = con.execute(
+            "SELECT COALESCE(SUM(ad_impressions), 0) FROM users"
+        ).fetchone()[0]
+        return {
+            "total_users": total,
+            "active_users": active,
+            "inactive_users": total - active,
+            "realtime_users": realtime,
+            "permanent_supporters": supporters,
+            "unlocked_today": unlocked_today,
+            "total_ad_impressions": total_impressions,
+        }

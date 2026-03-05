@@ -44,6 +44,11 @@ graph TB
         SR["Start Romagna<br/>servizi.startromagna.it"]
     end
 
+    subgraph Admin Dashboard
+        API["FastAPI server<br/>(Porta 4000)"]
+        UI["React SPA<br/>(File Statici)"]
+    end
+
     U -- comandi --> BOT
     BOT -- risposte --> U
     BOT -- legge/scrive --> DB
@@ -58,6 +63,9 @@ graph TB
     AD -- utenti con allarme --> DB
     AD -- corse soppresse --> SR
     AD -- bollettino --> U
+
+    API -- CRUD utenti --> DB
+    UI -- fetch REST --> API
 ```
 
 ---
@@ -85,6 +93,13 @@ BusBot/
 ├── scheduler/
 │   ├── suppression_check.py      # Job 30 min: notifiche soppressioni (solo utenti realtime)
 │   └── alarm_digest.py           # Job 1 min: bollettino programmato
+│
+├── admin/
+│   ├── api.py                    # Server FastAPI (CRUD utenti, statistiche)
+│   └── frontend/
+│       ├── index.html            # React SPA via CDN (No Build)
+│       ├── styles.css            # Stili Glassmorphism Tailwind
+│       └── app.js                # Componenti della Dashboard
 │
 ├── tests/
 │   ├── test_busbot.py            # Parsing HTML, matching linee, formattazione messaggi
@@ -219,11 +234,21 @@ L'hash utilizza `linea` e `dalle` di ogni corsa, ordinati alfabeticamente e conc
 4. **Invia sempre**, indipendentemente dalla presenza di soppressioni (a differenza del suppression_check)
 5. Gestione `Forbidden` come sopra
 
+### Admin Dashboard
+
+Un'interfaccia di amministrazione web integrata nel progetto, pensata per reti locali (es. Raspberry Pi). Si compone di:
+
+1. **API Backend (`admin/api.py`)**: server FastAPI, completamente slegato dal processo del bot, esposto sulla porta configurata (`ADMIN_PORT`). Implementa gli endpoint REST per modificare il database SQLite condiviso (`/api/users`, `/api/stats`).
+2. **Frontend SPA (`admin/frontend/`)**: interfaccia grafica React a singolo file HTML, senza step di build (carica React, Babel e TailwindCSS via CDN). Offre:
+   - Statistiche aggregate degli utenti bot
+   - Tabella ricercabile con stato, bacino, linee e allarmi
+   - Modale di editing per abilitare realtime, dare status supporter, o modificare iscrizioni.
+
 ---
 
 ### Database
 
-**`db/database.py`** — Layer SQLite con connessioni short-lived e WAL mode.
+**`db/database.py`** — Layer SQLite con connessioni short-lived e WAL mode (supporta letture concorrenti tra il Bot e l'API Admin).
 
 #### Schema
 
@@ -409,7 +434,8 @@ Copiare `.env.example` in `.env` e configurare:
 |-----------|:---:|---------|-------------|
 | `TELEGRAM_BOT_TOKEN` | sì | — | Token del bot ottenuto da BotFather |
 | `DB_PATH` | no | `busbot.db` | Percorso del file SQLite |
-| `ADSTERRA_WEBAPP_URL` | no | — | URL della pagina Mini App con lo spot AdsTerra. Se non impostato, il bottone ads non viene mostrato |
+| `ADSTERRA_WEBAPP_URL` | no | — | URL della pagina Mini App. Se vuoto, il bottone ads non compare. |
+| `ADMIN_PORT` | no | `4000` | Porta per il server della Admin Dashboard. |
 
 ---
 
@@ -434,18 +460,24 @@ python main.py
 docker compose up -d --build
 ```
 
-Il database è persistito nel volume named `busbot-data`, montato su `/app/data/busbot.db`.
+Il `docker-compose.yml` avvia **due container indipendenti**:
+1. `busbot`: Esegue Telegram polling e jobs.
+2. `busbot-admin`: Esegue il web server uvicorn (`http://localhost:4000`).
+
+Il database è persistito nel volume named `busbot-data`, montato su `/app/data` e condiviso tra entrambi i container in modo sicuro grazie alla modalità WAL di SQLite.
 
 ```mermaid
 graph LR
     subgraph Docker
-        C[busbot container]
-        V[("busbot-data<br/>/app/data")]
-        C -- persiste --> V
+        B[busbot]
+        A[busbot-admin]
+        V[("busbot-data<br/>/app/data/busbot.db")]
+        B -- R/W --> V
+        A -- R/W --> V
     end
-    TG[Telegram API] <--> C
-    SR[Start Romagna] --> C
-```
+    TG[Telegram API] <--> B
+    SR[Start Romagna] --> B
+    UI[Browser dell'amministratore] <--> A
 
 Il `Dockerfile` usa Python 3.13-slim, copia i sorgenti e avvia `main.py`. Non espone porte: il bot comunica esclusivamente con l'API Telegram in outbound.
 

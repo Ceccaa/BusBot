@@ -7,5 +7,16 @@ services:
     volumes:
       - busbot-data:/app/data
 
+  busbot-admin:
+    build: .
+    container_name: busbot-admin
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${ADMIN_PORT:-4000}:4000"
+    volumes:
+      - busbot-data:/app/data
+    command: uvicorn admin.api:app --host 0.0.0.0 --port 4000
+
 volumes:
   busbot-data:
